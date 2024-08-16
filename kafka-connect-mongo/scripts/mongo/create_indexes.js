@@ -1,18 +1,39 @@
 // Create indexes on all collections
 
 /*
-This is the second script responsible for configuring mongoDB automatically on startup.
-This script is responsible for creating collections, adding indexes and TTLs
+This script is responsible for initializing the replica set, creating collections, adding indexes and TTLs
 */
-
-console.log("");
 console.log("Running create_indexes.js");
 
-const ttlInDays = process.env.MONGO_COLLECTION_TTL; // TTL in days
-const dbName = process.env.MONGO_DB_NAME; // TTL in days
+const ode_db = process.env.MONGO_DB_NAME;
+const ode_user = process.env.MONGO_ODE_DB_USER;
+const ode_pass = process.env.MONGO_ODE_DB_PASS;
 
+const ttlInDays = process.env.MONGO_COLLECTION_TTL; // TTL in days
 const expire_seconds = ttlInDays * 24 * 60 * 60;
-const retry_milliseconds = 10000;
+const retry_milliseconds = 5000;
+
+console.log("ODE DB Name: " + ode_db);
+
+try {
+    console.log("Initializing replica set...");
+
+    var config = {
+        "_id": "rs0",
+        "version": 1,
+        "members": [
+        {
+            "_id": 0,
+            "host": "mongo:27017",
+            "priority": 2
+        },
+        ]
+    };
+    rs.initiate(config, { force: true });
+    rs.status();
+} catch(e) {
+    rs.status().ok
+}
 
 // name -> collection name
 // ttlField -> field to perform ttl on 
@@ -26,9 +47,52 @@ const collections = [
     {name: "OdePsmJson", ttlField: "recordGeneratedAt", timeField: "metadata.odeReceivedAt"},
 ];
 
+// Function to check if the replica set is ready
+function isReplicaSetReady() {
+    let status;
+    try {
+        status = rs.status();
+    } catch (error) {
+        console.error("Error getting replica set status: " + error);
+        return false;
+    }
+
+    // Check if the replica set has a primary
+    if (!status.hasOwnProperty('myState') || status.myState !== 1) {
+        console.log("Replica set is not ready yet");
+        return false;
+    }
+
+    console.log("Replica set is ready");
+    return true;
+}
+
 try{
-    db = db.getSiblingDB(dbName);
-    print("Connected to the MongoDB instance.");
+
+    // Wait for the replica set to be ready
+    while (!isReplicaSetReady()) {
+        sleep(retry_milliseconds);
+    }
+    sleep(retry_milliseconds);
+    // creates another user
+    console.log("Creating ODE user...");
+    admin = db.getSiblingDB("admin");
+    // Check if user already exists
+    var user = admin.getUser(ode_user);
+    if (user == null) {
+        admin.createUser(
+            {
+                user: ode_user,
+                pwd: ode_pass,
+                roles: [
+                    { role: "readWrite", db: ode_db },
+                ]
+            }
+        );
+    } else {
+        console.log("User \"" + ode_user + "\" already exists.");
+    }
+
 } catch (error) {
     print("Error connecting to the MongoDB instance: " + error);
 }
@@ -36,13 +100,13 @@ try{
 
 // Wait for the collections to exist in mongo before trying to create indexes on them
 let missing_collection_count;
+const db = db.getSiblingDB(ode_db);
 do {
-    print("");
     try {
         missing_collection_count = 0;
         const collection_names = db.getCollectionNames();
         for (collection of collections) {
-            console.log("Creating Indexes for Collection" + collection);
+            console.log("Creating Indexes for Collection" + collection["name"]);
             // Create Collection if It doesn't exist
             let created = false;
             if(!collection_names.includes(collection.name)){
