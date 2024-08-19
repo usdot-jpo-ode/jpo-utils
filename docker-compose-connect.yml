@@ -6,7 +6,7 @@ services:
       - kafka_connect_standalone
     image: jpo-kafka-connect-mongo
     build:
-      context: .
+      context: kafka-connect
       dockerfile: Dockerfile
     restart: ${RESTART_POLICY}
     deploy:
