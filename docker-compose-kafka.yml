@@ -1,0 +1,108 @@
+services:
+  kafka:
+    profiles:
+      - all
+      - kafka_connect_standalone
+      - kafka_full
+      - kafka
+    image: bitnami/kafka:latest
+    hostname: kafka
+    restart: ${RESTART_POLICY}
+    ports:
+      - "9092:9092"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    volumes:
+      - kafka:/bitnami
+    environment:
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9094,CONTROLLER://:9093,EXTERNAL://:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9094,EXTERNAL://${KAFKA_BOOTSTRAP_SERVERS}"
+      KAFKA_BROKER_ID: "1"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_CFG_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
+      KAFKA_CFG_LOG_RETENTION_BYTES: ${KAFKA_LOG_RETENTION_BYTES}
+    logging:
+      options:
+        max-size: "10m"  
+        max-file: "5"
+  
+  kafka-setup:
+    profiles:
+      - all
+      - kafka_full
+      - kafka_setup
+    image: bitnami/kafka:latest
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    depends_on:
+      kafka:
+        condition: service_started
+    volumes:
+      - ./kafka/kafka_init.sh:/kafka_init.sh
+    entrypoint: ["/bin/sh", "kafka_init.sh"]
+
+  kafka-schema-registry:
+    profiles:
+      - all
+      - kafka_schema_registry
+    image: confluentinc/cp-schema-registry:latest
+    hostname: schema-registry
+    restart: ${RESTART_POLICY}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      SCHEMA_REGISTRY_CONFLUENT_SUPPORT_METRICS_ENABLE: "false"
+      SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL: "NONE"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 30s
+      timeout: 10s
+      retries: 4
+
+  kafka-ui:
+    profiles:
+      - all
+      - kafka_full
+      - kafka_ui
+    hostname: kafka-ui
+    image: ghcr.io/kafbat/kafka-ui:latest
+    restart: ${RESTART_POLICY}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    ports:
+      - 8001:8080
+    depends_on:
+      - kafka
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+
+volumes:
+  kafka:

@@ -1,16 +1,19 @@
-version: '3'
-
-include:
-  - docker-compose-kafka.yml
-  - docker-compose-mongo.yml
-
 services:
   kafka-connect:
+    profiles:
+      - all
+      - kafka_connect
+      - kafka_connect_standalone
     image: jpo-kafka-connect-mongo
     build:
       context: .
       dockerfile: Dockerfile
     restart: ${RESTART_POLICY}
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
     ports:
       - "8083:8083"
     depends_on:
@@ -19,7 +22,7 @@ services:
     environment:
       MONGO_URI: ${MONGO_URI}
       MONGO_DB_NAME: ${MONGO_DB_NAME}
-      CONNECT_BOOTSTRAP_SERVERS: ${DOCKER_HOST_IP}:9092
+      CONNECT_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       CONNECT_REST_ADVERTISED_HOST_NAME: connect
       CONNECT_REST_PORT: 8083
       CONNECT_GROUP_ID: kafka-connect-group
@@ -37,8 +40,8 @@ services:
       CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-      CONNECT_LOG4J_ROOT_LOGLEVEL: ${LOG_LEVEL}
-      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=${LOG_LEVEL},org.reflections=${LOG_LEVEL},com.mongodb.kafka=${LOG_LEVEL}"
+      CONNECT_LOG4J_ROOT_LOGLEVEL: ${CONNECT_LOG_LEVEL}
+      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=${CONNECT_LOG_LEVEL},org.reflections=${CONNECT_LOG_LEVEL},com.mongodb.kafka=${CONNECT_LOG_LEVEL}"
       CONNECT_PLUGIN_PATH: /usr/share/confluent-hub-components
     volumes:
-      - ./scripts/kafka-connect/connect_start.sh:/scripts/connect_start.sh
+      - ./kafka-connect/connect_start.sh:/scripts/connect_start.sh
