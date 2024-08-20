@@ -61,8 +61,8 @@ services:
       MONGO_COLLECTION_TTL: ${MONGO_COLLECTION_TTL}
     entrypoint: ["/bin/bash", "setup_mongo.sh"]
     volumes:
-      - ./mongo/setup_mongo.sh:/setup_mongo.sh
-      - ./mongo/create_indexes.js:/create_indexes.js
+      - ${MONGO_SETUP_SCRIPT_RELATIVE_PATH}:/setup_mongo.sh
+      - ${MONGO_CREATE_INDEXES_SCRIPT_RELATIVE_PATH}:/create_indexes.js
 
   mongo-express:
     profiles:

@@ -52,7 +52,7 @@ services:
       kafka:
         condition: service_started
     volumes:
-      - ./kafka/kafka_init.sh:/kafka_init.sh
+      - ${KAFKA_INIT_SCRIPT_RELATIVE_PATH}:/kafka_init.sh
     entrypoint: ["/bin/sh", "kafka_init.sh"]
 
   kafka-schema-registry:

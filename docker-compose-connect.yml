@@ -44,4 +44,4 @@ services:
       CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=${CONNECT_LOG_LEVEL},org.reflections=${CONNECT_LOG_LEVEL},com.mongodb.kafka=${CONNECT_LOG_LEVEL}"
       CONNECT_PLUGIN_PATH: /usr/share/confluent-hub-components
     volumes:
-      - ./kafka-connect/connect_start.sh:/scripts/connect_start.sh
+      - ${CONNECT_SCRIPT_RELATIVE_PATH}:/scripts/connect_start.sh
