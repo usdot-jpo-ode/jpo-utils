@@ -64,7 +64,7 @@ Where the `COMPOSE_PROFILES` variable in you're `.env` file are as follows:
 1. Create a copy of `sample.env` and rename it to `.env`.
 2. Update the variable `DOCKER_HOST_IP` to the local IP address of the system running docker which can be found by running the `ifconfig` command
    1. Hint: look for "inet addr:" within "eth0" or "en0" for OSX
-3. Set the password for `MONGO_ADMIN_DB_PASS` and `MONGO_ODE_DB_PASS` environmental variables to a secure password.
+3. Set the password for `MONGO_ADMIN_DB_PASS` and `MONGO_READ_WRITE_PASS` environmental variables to a secure password.
 4. Set the `COMPOSE_PROFILES` variable to: `mongo_full`
 5. Run the following command: `docker-compose up -d`
 6. Go to `localhost:8082` in your browser and verify that `mongo-express` can see the created database
@@ -131,7 +131,7 @@ Set the `COMPOSE_PROFILES` environmental variable as follows:
 
 1. Create a copy of `sample.env` and rename it to `.env`.
 2. Update the variable `DOCKER_HOST_IP` to the local IP address of the system running docker
-3. Set the password for `MONGO_ADMIN_DB_PASS` and `MONGO_ODE_DB_PASS` environmental variables to a secure password.
+3. Set the password for `MONGO_ADMIN_DB_PASS` and `MONGO_READ_WRITE_PASS` environmental variables to a secure password.
 4. Set the `COMPOSE_PROFILES` variable to: `kafka_connect_standalone,mongo_express,kafka_ui,kafka_setup`
 5. Navigate back to the root directory and run the following command: `docker compose up -d`
 6. Produce a sample message to one of the sink topics by using `kafka_ui` by:
