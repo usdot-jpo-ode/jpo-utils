@@ -1,14 +1,16 @@
-#------------------------------------------------------------
-# jpo-ode topics
-#------------------------------------------------------------
-{% for topicName in values.topicNames %}
+{% for app in values.apps %}
+
+#------------------------------------------------------------------
+# Stream Topics for {{ app.name }}
+#------------------------------------------------------------------
+{% for topicName in app.streamTopics %}
 ---
 apiVersion: "kafka.jikkou.io/v1beta2"
 kind: KafkaTopic
 metadata:
   name: "{{ topicName }}"
   labels: 
-    app: jpo-ode
+    app: "{{ app.name }}"
 spec:
   partitions: {{ system.env.KAFKA_TOPIC_PARTITIONS | default(values.defaultPartitions) }}
   replicas: {{ system.env.KAFKA_TOPIC_REPLICAS | default(values.defaultReplicas) }}
@@ -16,28 +18,29 @@ spec:
     - StreamTopic
 {% endfor %}
 
-#-----------------------------------------------------------------
-# jpo-conflictmonitor topics
-#-----------------------------------------------------------------
+#------------------------------------------------------------------
+# Compact Topics for {{ app.name }}
+#------------------------------------------------------------------
+{% for topicName in app.compactTopics %}
 ---
 apiVersion: "kafka.jikkou.io/v1beta2"
 kind: KafkaTopic
 metadata:
-  name: topic.CompactTopicTest
+  name: "{{ topicName }}"
   labels: 
-    app: jpo-conflictmonitor
+    app: "{{ app.name }}"
 spec:
   partitions: 1
   replicas: 1
   configMapRefs:
     - CompactTopic
+{% endfor %}
 
-
+{% endfor %}
 
 #------------------------------------------------------------------
 # Config Maps
 #------------------------------------------------------------------
-
 ---
 apiVersion: "core.jikkou.io/v1beta2"
 kind: ConfigMap
@@ -45,9 +48,8 @@ metadata:
   name: StreamTopic
 data:
   cleanup.policy: 'delete'
-  min.insync.replicas: 1
-  retention.ms: 3600000 # (3600000 = 1 hour)
-
+  min.insync.replicas: {{ system.env.KAFKA_TOPIC_MIN_INSYNC_REPLICAS | default(values.defaultMinInsyncReplicas) }}
+  retention.ms: {{ system.env.KAFKA_TOPIC_RETENTION_MS | default(values.defaultRetentionMs) }}
 ---
 apiVersion: "core.jikkou.io/v1beta2"
 kind: ConfigMap
@@ -55,7 +57,7 @@ metadata:
   name: CompactTopic
 data:
   cleanup.policy: 'compact'
-  min.insync.replicas: 1
+  min.insync.replicas: {{ system.env.KAFKA_TOPIC_MIN_INSYNC_REPLICAS | default(values.defaultMinInsyncReplicas) }}
 
 
 

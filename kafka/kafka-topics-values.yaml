@@ -1,10 +1,22 @@
 defaultPartitions: 1
 defaultReplicas: 1
-topicNames:
-  - topic.OdeSpatJson
-  - topic.OdeBsmJson
-  - topic.OdeTimJson
-  - topic.OdeMapJson
-  - topic.OdeSsmJson
-  - topic.OdeSrmJson
-  - topic.OdePsmJson
+defaultMinInsyncReplicas: 1
+defaultRetentionMs: 3600000 # (3600000 = 1 hour)
+apps:
+  - name: jpo-ode
+    streamTopics:
+      - topic.OdeSpatJson
+      - topic.OdeBsmJson
+      - topic.OdeTimJson
+      - topic.OdeMapJson
+      - topic.OdeSsmJson
+      - topic.OdeSrmJson
+      - topic.OdePsmJson
+    compactTopics:
+      - topic.TestCompact
+  - name: jpo-geojsonconverter
+    streamTopics:
+    compactTopics:
+  - name: jpo-conflictmonitor
+    streamTopics:
+    compactTopics:
