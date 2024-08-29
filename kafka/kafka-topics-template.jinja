@@ -1,7 +1,7 @@
 {% for app in values.apps %}
 
 #------------------------------------------------------------------
-# Stream Topics for {{ app.name }}
+# Stream Topics
 #------------------------------------------------------------------
 {% for topicName in app.streamTopics %}
 ---
@@ -21,7 +21,7 @@ spec:
 {% endfor %}
 
 #------------------------------------------------------------------
-# Table Topics for {{ app.name }}
+# Table Topics
 #------------------------------------------------------------------
 {% for topicName in app.tableTopics %}
 ---

@@ -7,9 +7,11 @@ COPY ./kafka-topics-template.jinja /app/kafka-topics-template.jinja
 COPY ./kafka-topics-values.yaml /app/kafka-topics-values.yaml
 COPY ./kafka_init.sh /app/kafka_init.sh
 
+# Create/update topics then exit container
 ENTRYPOINT [ "/bin/sh" ]
 CMD [ "./kafka_init.sh" ]
 
-# For dev, keep the container running to be able to poke around in it in Docker Desktop
+## For dev & testing, uncomment to keep the container running to be be able to
+## use the Jikkou command line within Docker Desktop:
 # ENTRYPOINT [ "tail" ]
 # CMD ["-f", "/dev/null"]

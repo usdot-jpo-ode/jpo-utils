@@ -86,54 +86,50 @@ apps:
     tableTopics: {}
   - name: jpo-conflictmonitor
     streamTopics:
-      - name: topic.CmAppHealthNotifications
-      - name: topic.CmMapBroadcastRateEvents
-      - name: topic.CmMapMinimumDataEvents
-      - name: topic.CmSpatBroadcastRateEvents
-      - name: topic.CmSpatMinimumDataEvents
-      - name: topic.CmBsmEvents
-      - name: topic.CmConnectionOfTravelEvent
-      - name: topic.CmLaneDirectionOfTravelEvent
-      - name: topic.CmStopLinePassageEvent
-      - name: topic.CmStopLineStopEvent
-      - name: topic.CmSpatTimeChangeDetailsEvent
-      - name: topic.CmSignalGroupAlignmentEvents
-      - name: topic.CmIntersectionReferenceAlignmentEvents
-      - name: topic.CmSignalStateConflictEvents
-      - name: topic.CmBsmJsonRepartition
-      - name: topic.CmBsmIntersection
-      - name: topic.ProcessedSpat
-      - name: topic.ProcessedMap
-      - name: topic.OdeBsmJson
-      - name: topic.CmSignalStateEventAssessment
-      - name: topic.CmKafkaStateChangeEvents
-      - name: topic.CmTimestampDeltaEvent
+      - topic.CmAppHealthNotifications
+      - topic.CmMapBroadcastRateEvents
+      - topic.CmMapMinimumDataEvents
+      - topic.CmSpatBroadcastRateEvents
+      - topic.CmSpatMinimumDataEvents
+      - topic.CmBsmEvents
+      - topic.CmConnectionOfTravelEvent
+      - topic.CmLaneDirectionOfTravelEvent
+      - topic.CmStopLinePassageEvent
+      - topic.CmStopLineStopEvent
+      - topic.CmSpatTimeChangeDetailsEvent
+      - topic.CmSignalGroupAlignmentEvents
+      - topic.CmIntersectionReferenceAlignmentEvents
+      - topic.CmSignalStateConflictEvents
+      - topic.CmBsmJsonRepartition
+      - topic.CmBsmIntersection
+      - topic.CmKafkaStateChangeEvents
+      - topic.CmTimestampDeltaEvent
     tableTopics:
-      - name: topic.CmLaneDirectionOfTravelNotification
-      - name: topic.CmConnectionOfTravelNotification
-      - name: topic.CmAppHealthNotification
-      - name: topic.CmSpatTimeChangeDetailsNotification
-      - name: topic.CmSignalStateConflictNotification
-      - name: topic.CmSignalGroupAlignmentNotification
-      - name: topic.CmIntersectionReferenceAlignmentNotification
-      - name: topic.CmLaneDirectionOfTravelAssessment
-      - name: topic.CmConnectionOfTravelAssessment
-      - name: topic.CmDefaultConfigTable
-      - name: topic.CmCustomConfigTable
-      - name: topic.CmMergedConfigTable
-      - name: topic.CmIntersectionConfigTable
-      - name: topic.CmNotification
-      - name: topic.CmMapBoundingBox
-      - name: topic.CmEvent
-      - name: topic.CmAssessment
-      - name: topic.CmStopLineStopAssessment
-      - name: topic.CmStopLineStopNotification
-      - name: topic.CmSignalStateEventAssessment
-      - name: topic.CmStopLinePassageNotification
-      - name: topic.CmMapRevisionCounterEvents
-      - name: topic.CmSpatRevisionCounterEvents
-      - name: topic.CmBsmRevisionCounterEvents
-      - name: topic.CmTimestampDeltaNotification
+      - topic.CmLaneDirectionOfTravelNotification
+      - topic.CmConnectionOfTravelNotification
+      - topic.CmAppHealthNotification
+      - topic.CmSpatTimeChangeDetailsNotification
+      - topic.CmSignalStateConflictNotification
+      - topic.CmSignalGroupAlignmentNotification
+      - topic.CmIntersectionReferenceAlignmentNotification
+      - topic.CmLaneDirectionOfTravelAssessment
+      - topic.CmConnectionOfTravelAssessment
+      - topic.CmDefaultConfigTable
+      - topic.CmCustomConfigTable
+      - topic.CmMergedConfigTable
+      - topic.CmIntersectionConfigTable
+      - topic.CmNotification
+      - topic.CmMapBoundingBox
+      - topic.CmEvent
+      - topic.CmAssessment
+      - topic.CmStopLineStopAssessment
+      - topic.CmStopLineStopNotification
+      - topic.CmSignalStateEventAssessment
+      - topic.CmStopLinePassageNotification
+      - topic.CmMapRevisionCounterEvents
+      - topic.CmSpatRevisionCounterEvents
+      - topic.CmBsmRevisionCounterEvents
+      - topic.CmTimestampDeltaNotification
   - name: jpo-deduplicator
     streamTopics:
       - topic.DeduplicatedProcessedMap

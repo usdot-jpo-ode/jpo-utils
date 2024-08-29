@@ -52,7 +52,7 @@ services:
     build:
       context: kafka
       dockerfile: Dockerfile.jikkou
-    restart: on-failure
+    restart: on-failure:3 # try up to 3 times
     deploy:
       resources:
         limits:
@@ -61,8 +61,13 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    environment:
+      KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS}
+      KAFKA_TOPIC_REPLICAS: ${KAFKA_TOPIC_REPLICAS}
+      KAFKA_TOPIC_MIN_INSYNC_REPLICAS: ${KAFKA_TOPIC_MIN_INSYNC_REPLICAS}
+      KAFKA_TOPIC_RETENTION_MS: ${KAFKA_TOPIC_RETENTION_MS}
+      KAFKA_TOPIC_DELETE_RETENTION_MS: ${KAFKA_TOPIC_DELETE_RETENTION_MS}
   
-
 
   kafka-schema-registry:
     profiles:
