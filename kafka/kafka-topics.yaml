@@ -1,0 +1,95 @@
+#------------------------------------------------------------
+# jpo-ode topics
+#------------------------------------------------------------
+---
+apiVersion: "kafka.jikkou.io/v1beta2"
+kind: KafkaTopicList
+metadata:
+  labels: 
+    environment: dev
+    application: jpo-ode
+items:
+  - metadata:
+      name: topic.OdeSpatJson
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "StreamTopic" ]
+  - metadata:
+      name: topic.OdeBsmJson
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "StreamTopic" ]
+  - metadata:
+      name: topic.OdeTimJson
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "StreamTopic" ]
+  - metadata:
+      name: topic.OdeMapJson
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "StreamTopic" ]
+  - metadata:
+      name: topic.OdeSsmJson
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "StreamTopic" ]
+  - metadata:
+      name: topic.OdeSrmJson
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "StreamTopic" ]
+  - metadata:
+      name: topic.OdePsmJson
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "StreamTopic" ]
+
+#-----------------------------------------------------------------
+# jpo-conflictmonitor topics
+#-----------------------------------------------------------------
+---
+apiVersion: "kafka.jikkou.io/v1beta2"
+kind: KafkaTopicList
+metadata:
+  labels: 
+    environment: dev
+    application: jpo-conflictmonitor
+items:
+  - metadata:
+      name: topic.CompactTopicTest
+    spec:
+      partitions: 1
+      replicas: 1
+      configMapRefs: [ "CompactTopic" ]
+
+#------------------------------------------------------------------
+# Config Maps
+#------------------------------------------------------------------
+---
+apiVersion: "core.jikkou.io/v1beta2"
+kind: ConfigMap
+metadata:
+  name: StreamTopic
+data:
+  cleanup.policy: 'delete'
+  min.insync.replicas: 1
+  retention.ms: 3600000 # (3600000 = 1 hour)
+---
+apiVersion: "core.jikkou.io/v1beta2"
+kind: ConfigMap
+metadata:
+  name: CompactTopic
+data:
+  cleanup.policy: 'compact'
+  min.insync.replicas: 1
+
+
+

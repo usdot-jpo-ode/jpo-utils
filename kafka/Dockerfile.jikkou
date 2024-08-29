@@ -1,0 +1,10 @@
+FROM streamthoughts/jikkou:latest
+USER root
+
+COPY ./application.conf /app/application.conf
+COPY ./jikkouconfig /etc/jikkou/config
+COPY ./kafka-topics.yaml /app/kafka-topics.yaml
+
+# For dev, keep the container running to be able to poke around in it in Docker Desktop
+ENTRYPOINT [ "tail" ]
+CMD ["-f", "/dev/null"]
