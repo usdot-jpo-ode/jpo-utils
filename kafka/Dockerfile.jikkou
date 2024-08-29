@@ -1,10 +1,15 @@
-FROM streamthoughts/jikkou:latest
+FROM streamthoughts/jikkou:0.35.2
 USER root
 
 COPY ./application.conf /app/application.conf
 COPY ./jikkouconfig /etc/jikkou/config
-COPY ./kafka-topics.yaml /app/kafka-topics.yaml
+COPY ./kafka-topics-template.jinja /app/kafka-topics-template.jinja
+COPY ./kafka-topics-values.yaml /app/kafka-topics-values.yaml
+COPY ./kafka_init.sh /app/kafka_init.sh
+
+ENTRYPOINT [ "/bin/sh" ]
+CMD [ "./kafka_init.sh" ]
 
 # For dev, keep the container running to be able to poke around in it in Docker Desktop
-ENTRYPOINT [ "tail" ]
-CMD ["-f", "/dev/null"]
+# ENTRYPOINT [ "tail" ]
+# CMD ["-f", "/dev/null"]

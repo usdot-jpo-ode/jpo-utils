@@ -48,7 +48,7 @@ services:
       - all
       - kafka_full
       - kafka_setup
-    image: jikkou
+    image: kafka-setup
     build:
       context: kafka
       dockerfile: Dockerfile.jikkou
@@ -61,8 +61,7 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    volumes:
-      - ${KAFKA_INIT_SCRIPT_RELATIVE_PATH}:/kafka_init.sh   
+  
 
 
   kafka-schema-registry:

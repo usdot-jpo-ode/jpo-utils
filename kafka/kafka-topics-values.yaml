@@ -1,0 +1,10 @@
+defaultPartitions: 1
+defaultReplicas: 1
+topicNames:
+  - topic.OdeSpatJson
+  - topic.OdeBsmJson
+  - topic.OdeTimJson
+  - topic.OdeMapJson
+  - topic.OdeSsmJson
+  - topic.OdeSrmJson
+  - topic.OdePsmJson
