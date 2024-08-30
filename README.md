@@ -88,9 +88,9 @@ An optional `kafka-init`, `schema-registry`, and `kafka-ui` instance can be depl
 
 ### Configure Topic Creation
 
-The Kafka topics to be created for each application are configured in the [kafka-topics-values.yaml](kafka/kafka-topics-values.yaml) file.  The topics are sorted into normal "Stream" topics and compacted "Table" topics by their placement within that file.
+The Kafka topics created by the `kafka-setup` service are configured in the [kafka-topics-values.yaml](kafka/kafka-topics-values.yaml) file.  The topics in that file are organized by the application they are for, and sorted into "Stream Topics" (those with `cleanup.policy` = `delete`) and "Table Topics" (with `cleanup.policy` = `compact`).  
 
-The following enviroment variables can be used to configure Kafka Topic creation by the `kafka-setup` project.  The variables apply to all topics.
+The following enviroment variables can be used to configure Kafka Topic creation.  
 
 | Environment Variable | Type | Description |
 |---|---|---|
