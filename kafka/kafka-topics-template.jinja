@@ -1,4 +1,8 @@
+{% macro create_topics(app_name) %}
+
 {% for app in values.apps %}
+
+{% if app.name == app_name %}
 
 #------------------------------------------------------------------
 # Stream Topics
@@ -39,9 +43,26 @@ spec:
     min.insync.replicas: {{ system.env.KAFKA_TOPIC_MIN_INSYNC_REPLICAS | default(values.minInsyncReplicas) }}
     delete.retention.ms: {{ system.env.KAFKA_TOPIC_DELETE_RETENTION_MS | default(values.deleteRetentionMs) }}
 {% endfor %}
-
+{% endif %}
 {% endfor %}
+{% endmacro %}
 
+
+{% if system.env.JPO_ODE %}
+{{ create_topics("jpo-ode") }}
+{% endif %}
+
+{% if system.env.JPO_GEOJSONCONVERTER %}
+{{ create_topics("jpo-geojsonconverter") }}
+{% endif %}
+
+{% if system.env.JPO_CONFLICTMONITOR %}
+{{ create_topics("jpo-conflictmonitor") }}
+{% endif %}
+
+{% if system.env.JPO_DEDUPLICATOR %}
+{{ create_topics("jpo-deduplicator") }}
+{% endif %}
 
 
 

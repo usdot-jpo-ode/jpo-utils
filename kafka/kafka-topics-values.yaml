@@ -30,7 +30,8 @@ retentionMs: 300000
 deleteRetentionMs: 3600000
 
 #--------------------------------------------------------------------------------------
-# Topics are grouped by application:
+# Topics are grouped by application.  Apps with the corresponding environment variable
+# set are create or updated.
 #   - jpo-ode
 #   - jpo-geojsonconverter
 #   - jpo-conflictmonitor
@@ -39,6 +40,7 @@ deleteRetentionMs: 3600000
 # The topics for each app are grouped into "Stream" topics and "Table" topics:
 #   - Stream Topics are normal topics with cleanup.policy = delete
 #   - Table Topics are intended to back KTables and have cleanup.policy = compact
+#
 #--------------------------------------------------------------------------------------
 apps:
   - name: jpo-ode
