@@ -88,21 +88,21 @@ An optional `kafka-init`, `schema-registry`, and `kafka-ui` instance can be depl
 
 ### Configure Topic Creation
 
-The Kafka topics created by the `kafka-setup` service are configured in the [kafka-topics-values.yaml](kafka/kafka-topics-values.yaml) file.  The topics in that file are organized by the application they are for, and sorted into "Stream Topics" (those with `cleanup.policy` = `delete`) and "Table Topics" (with `cleanup.policy` = `compact`).  
+The Kafka topics created by the `kafka-setup` service are configured in the [kafka-topics-values.yaml](kafka/kafka-topics-values.yaml) file.  The topics in that file are organized by the application, and sorted into "Stream Topics" (those with `cleanup.policy` = `delete`) and "Table Topics" (with `cleanup.policy` = `compact`).  
 
 The following enviroment variables can be used to configure Kafka Topic creation.  
 
-| Environment Variable | Type | Description |
-|---|---|---|
-| `KAFKA_TOPIC_CREATE_ODE` | true/false | Create topics for ODE |
-| `KAFKA_TOPIC_CREATE_GEOJSONCONVERTER` | true/false | Create topics for GeoJSON Converter |
-| `KAFKA_TOPIC_CREATE_CONFLICTMONITOR` | true/false | Create topics for Conflict Monitor |
-| `KAFKA_TOPIC_CREATE_DEDUPLICATOR` | true/false | Create topics for Deduplicator |
-| `KAFKA_TOPIC_PARTITIONS` | number | Number of partitions |
-| `KAFKA_TOPIC_REPLICAS` | number | Number of replicas |
-| `KAFKA_TOPIC_MIN_INSYNC_REPLICAS` | number | Minumum in-sync replicas (for use with ack=all) |
-| `KAFKA_TOPIC_RETENTION_MS` | ms | Retention time for stream topics |
-| `KAFKA_TOPIC_DELETE_RETENTION_MS` | ms | Tombstone retention time for compacted topics |
+| Environment Variable | Description |
+|---|---|
+| `KAFKA_TOPIC_CREATE_ODE` | Whether to create topics for the ODE |
+| `KAFKA_TOPIC_CREATE_GEOJSONCONVERTER` | Whether to create topics for the GeoJSON Converter |
+| `KAFKA_TOPIC_CREATE_CONFLICTMONITOR` | Whether to create topics for the Conflict Monitor |
+| `KAFKA_TOPIC_CREATE_DEDUPLICATOR` | Whether to create topics for the Deduplicator |
+| `KAFKA_TOPIC_PARTITIONS` | Number of partitions |
+| `KAFKA_TOPIC_REPLICAS` | Number of replicas |
+| `KAFKA_TOPIC_MIN_INSYNC_REPLICAS` | Minumum number of in-sync replicas (for use with ack=all) |
+| `KAFKA_TOPIC_RETENTION_MS` | Retention time for stream topics, milliseconds |
+| `KAFKA_TOPIC_DELETE_RETENTION_MS` | Tombstone retention time for compacted topics, milliseconds |
 
 
 
