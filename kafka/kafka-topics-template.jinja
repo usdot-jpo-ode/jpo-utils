@@ -1,12 +1,7 @@
-{% macro create_topics(app_name) %}
+{# ----------------- Create Topics for app ----------------- #}
+{% macro create_topics(app) %}
 
-{% for app in values.apps %}
-
-{% if app.name == app_name %}
-
-#------------------------------------------------------------------
-# Stream Topics
-#------------------------------------------------------------------
+{# Stream Topics #}
 {% for topicName in app.streamTopics %}
 ---
 apiVersion: "kafka.jikkou.io/v1beta2"
@@ -24,9 +19,7 @@ spec:
     retention.ms: {{ system.env.KAFKA_TOPIC_RETENTION_MS | default(values.retentionMs) }} 
 {% endfor %}
 
-#------------------------------------------------------------------
-# Table Topics
-#------------------------------------------------------------------
+{# Table Topics #}
 {% for topicName in app.tableTopics %}
 ---
 apiVersion: "kafka.jikkou.io/v1beta2"
@@ -43,25 +36,24 @@ spec:
     min.insync.replicas: {{ system.env.KAFKA_TOPIC_MIN_INSYNC_REPLICAS | default(values.minInsyncReplicas) }}
     delete.retention.ms: {{ system.env.KAFKA_TOPIC_DELETE_RETENTION_MS | default(values.deleteRetentionMs) }}
 {% endfor %}
-{% endif %}
-{% endfor %}
+
 {% endmacro %}
 
-
-{% if system.env.JPO_ODE %}
-{{ create_topics("jpo-ode") }}
+{#-------  Create topics for apps with env variable = true ----------#}
+{% if system.env.KAFKA_TOPIC_CREATE_ODE %}
+{{ create_topics(values.apps.ode) }}
 {% endif %}
 
-{% if system.env.JPO_GEOJSONCONVERTER %}
-{{ create_topics("jpo-geojsonconverter") }}
+{% if system.env.KAFKA_TOPIC_CREATE_GEOJSONCONVERTER %}
+{{ create_topics(values.apps.geojsonconverter) }}
 {% endif %}
 
-{% if system.env.JPO_CONFLICTMONITOR %}
-{{ create_topics("jpo-conflictmonitor") }}
+{% if system.env.KAFKA_TOPIC_CREATE_CONFLICTMONITOR %}
+{{ create_topics(values.apps.conflictmonitor) }}
 {% endif %}
 
-{% if system.env.JPO_DEDUPLICATOR %}
-{{ create_topics("jpo-deduplicator") }}
+{% if system.env.KAFKA_TOPIC_CREATE_DEDUPLICATOR %}
+{{ create_topics(values.apps.deduplicator) }}
 {% endif %}
 
 

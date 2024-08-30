@@ -31,11 +31,11 @@ deleteRetentionMs: 3600000
 
 #--------------------------------------------------------------------------------------
 # Topics are grouped by application.  Apps with the corresponding environment variable
-# set are create or updated.
-#   - jpo-ode
-#   - jpo-geojsonconverter
-#   - jpo-conflictmonitor
-#   - jpo-deduplicator
+# equal to true are create or updated.
+#   - ode
+#   - geojsonconverter
+#   - conflictmonitor
+#   - deduplicator
 # 
 # The topics for each app are grouped into "Stream" topics and "Table" topics:
 #   - Stream Topics are normal topics with cleanup.policy = delete
@@ -43,7 +43,8 @@ deleteRetentionMs: 3600000
 #
 #--------------------------------------------------------------------------------------
 apps:
-  - name: jpo-ode
+  ode:
+    name: jpo-ode
     streamTopics:
       - topic.OdeBsmPojo
       - topic.OdeSpatTxPojo
@@ -80,13 +81,15 @@ apps:
       - topic.OdePsmTxPojo
       - topic.OdePsmJson
     tableTopics: {}
-  - name: jpo-geojsonconverter
+  geojsonconverter:
+    name: jpo-geojsonconverter
     streamTopics:
       - topic.ProcessedSpat
       - topic.ProcessedMap
       - topic.ProcessedMapWKT    
     tableTopics: {}
-  - name: jpo-conflictmonitor
+  conflictmonitor:
+    name: jpo-conflictmonitor
     streamTopics:
       - topic.CmAppHealthNotifications
       - topic.CmMapBroadcastRateEvents
@@ -132,7 +135,8 @@ apps:
       - topic.CmSpatRevisionCounterEvents
       - topic.CmBsmRevisionCounterEvents
       - topic.CmTimestampDeltaNotification
-  - name: jpo-deduplicator
+  deduplicator:
+    name: jpo-deduplicator
     streamTopics:
       - topic.DeduplicatedProcessedMap
       - topic.DeduplicatedProcessedMapWKT

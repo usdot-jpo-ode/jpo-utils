@@ -10,7 +10,7 @@ COPY ./kafka-topics-values.yaml /app/kafka-topics-values.yaml
 COPY ./kafka_init.sh /app/kafka_init.sh
 
 # Create/update topics then exit container
-ENTRYPOINT ./kafka_init.sh jpo-ode jpo-geojsonconverter jpo-conflictmonitor jpo-deduplicator
+ENTRYPOINT ./kafka_init.sh
 
 ## For dev & testing, uncomment to keep the container running to be be able to
 ## use the Jikkou command line within Docker Desktop:
