@@ -8,6 +8,12 @@ services:
     image: bitnami/kafka:3.8.0
     hostname: kafka
     restart: ${RESTART_POLICY}
+    healthcheck:
+      test: /opt/bitnami/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092 --version || exit 1
+      interval: 30s
+      start_period: 30s
+      timeout: 15s
+      retries: 12
     ports:
       - "9092:9092"
     deploy:
@@ -35,14 +41,18 @@ services:
       options:
         max-size: "10m"  
         max-file: "5"
-  
+
+
   kafka-setup:
     profiles:
       - all
       - kafka_full
       - kafka_setup
-    image: bitnami/kafka:3.8.0
-    restart: on-failure
+    image: kafka-setup
+    build:
+      context: kafka
+      dockerfile: Dockerfile.jikkou
+    restart: on-failure:3 # try up to 3 times
     deploy:
       resources:
         limits:
@@ -50,10 +60,18 @@ services:
           memory: 1G
     depends_on:
       kafka:
-        condition: service_started
-    volumes:
-      - ${KAFKA_INIT_SCRIPT_RELATIVE_PATH}:/kafka_init.sh
-    entrypoint: ["/bin/sh", "kafka_init.sh"]
+        condition: service_healthy
+    environment:
+      KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS}
+      KAFKA_TOPIC_REPLICAS: ${KAFKA_TOPIC_REPLICAS}
+      KAFKA_TOPIC_MIN_INSYNC_REPLICAS: ${KAFKA_TOPIC_MIN_INSYNC_REPLICAS}
+      KAFKA_TOPIC_RETENTION_MS: ${KAFKA_TOPIC_RETENTION_MS}
+      KAFKA_TOPIC_DELETE_RETENTION_MS: ${KAFKA_TOPIC_DELETE_RETENTION_MS}
+      KAFKA_TOPIC_CREATE_ODE: ${KAFKA_TOPIC_CREATE_ODE}
+      KAFKA_TOPIC_CREATE_GEOJSONCONVERTER: ${KAFKA_TOPIC_CREATE_GEOJSONCONVERTER}
+      KAFKA_TOPIC_CREATE_CONFLICTMONITOR: ${KAFKA_TOPIC_CREATE_CONFLICTMONITOR}
+      KAFKA_TOPIC_CREATE_DEDUPLICATOR: ${KAFKA_TOPIC_CREATE_DEDUPLICATOR}
+  
 
   kafka-schema-registry:
     profiles:
@@ -68,7 +86,8 @@ services:
           cpus: '0.5'
           memory: 1G
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
       - "8081:8081"
     environment:
@@ -98,7 +117,8 @@ services:
     ports:
       - 8001:8080
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     environment:
       DYNAMIC_CONFIG_ENABLED: 'true'
       KAFKA_CLUSTERS_0_NAME: local

@@ -1,0 +1,148 @@
+#======================================================================================
+# Topic names and configuration settings
+#======================================================================================
+
+#--------------------------------------------------------------------------------------
+# Default values of topic configuration settings, 
+# can be overridden by environment variables.
+#   
+# Ref: https://kafka.apache.org/documentation/#topicconfigs
+#--------------------------------------------------------------------------------------
+
+# env var: KAFKA_TOPIC_PARTITIONS
+partitions: 1   
+
+# env var: KAFKA_TOPIC_REPLICAS
+replicas: 1         
+
+# min.insync.replicas, use in conjunction with acks = all
+# env var: KAFKA_TOPIC_MIN_INSYNC_REPLICAS
+minInsyncReplicas: 1 
+
+# retention.ms = Retention time for normal 'delete' mode topics (ignored for compacted)
+# env var: KAFKA_TOPIC_RETENTION_MS
+# (300000 = 5 minutes, 3600000 = 1 hour, 86400000 = 1 day)
+retentionMs: 300000 
+
+# delete.retention.ms = Retention time for tombstones for log compacted topics
+# (ignored for stream topics) 
+# env var: KAFKA_TOPIC_DELETE_RETENTION_MS
+deleteRetentionMs: 3600000
+
+#--------------------------------------------------------------------------------------
+# Topics are grouped by application.  Apps with the corresponding environment variable
+# equal to true are create or updated.
+#   - ode
+#   - geojsonconverter
+#   - conflictmonitor
+#   - deduplicator
+# 
+# The topics for each app are grouped into "Stream" topics and "Table" topics:
+#   - Stream Topics are normal topics with cleanup.policy = delete
+#   - Table Topics are intended to back KTables and have cleanup.policy = compact
+#
+#--------------------------------------------------------------------------------------
+apps:
+  ode:
+    name: jpo-ode
+    streamTopics:
+      - topic.OdeBsmPojo
+      - topic.OdeSpatTxPojo
+      - topic.OdeSpatPojo
+      - topic.OdeSpatJson
+      - topic.FilteredOdeSpatJson
+      - topic.OdeSpatRxJson
+      - topic.OdeSpatRxPojo
+      - topic.OdeBsmJson
+      - topic.FilteredOdeBsmJson
+      - topic.OdeTimJson
+      - topic.OdeTimBroadcastJson
+      - topic.J2735TimBroadcastJson
+      - topic.OdeDriverAlertJson
+      - topic.Asn1DecoderInput
+      - topic.Asn1DecoderOutput
+      - topic.Asn1EncoderInput
+      - topic.Asn1EncoderOutput
+      - topic.SDWDepositorInput
+      - topic.OdeTIMCertExpirationTimeJson
+      - topic.OdeRawEncodedBSMJson
+      - topic.OdeRawEncodedSPATJson
+      - topic.OdeRawEncodedTIMJson
+      - topic.OdeRawEncodedMAPJson
+      - topic.OdeMapTxPojo
+      - topic.OdeMapJson
+      - topic.OdeRawEncodedSSMJson
+      - topic.OdeSsmPojo
+      - topic.OdeSsmJson
+      - topic.OdeRawEncodedSRMJson
+      - topic.OdeSrmTxPojo
+      - topic.OdeSrmJson
+      - topic.OdeRawEncodedPSMJson
+      - topic.OdePsmTxPojo
+      - topic.OdePsmJson
+    tableTopics: {}
+  geojsonconverter:
+    name: jpo-geojsonconverter
+    streamTopics:
+      - topic.ProcessedSpat
+      - topic.ProcessedMap
+      - topic.ProcessedMapWKT
+      - topic.ProcessedBsm
+    tableTopics: {}
+  conflictmonitor:
+    name: jpo-conflictmonitor
+    streamTopics:
+      - topic.CmAppHealthNotifications
+      - topic.CmMapBroadcastRateEvents
+      - topic.CmMapMinimumDataEvents
+      - topic.CmSpatBroadcastRateEvents
+      - topic.CmSpatMinimumDataEvents
+      - topic.CmBsmEvents
+      - topic.CmConnectionOfTravelEvent
+      - topic.CmLaneDirectionOfTravelEvent
+      - topic.CmStopLinePassageEvent
+      - topic.CmStopLineStopEvent
+      - topic.CmSpatTimeChangeDetailsEvent
+      - topic.CmSignalGroupAlignmentEvents
+      - topic.CmIntersectionReferenceAlignmentEvents
+      - topic.CmSignalStateConflictEvents
+      - topic.CmBsmJsonRepartition
+      - topic.CmBsmIntersection
+      - topic.CmKafkaStateChangeEvents
+      - topic.CmTimestampDeltaEvent
+    tableTopics:
+      - topic.CmLaneDirectionOfTravelNotification
+      - topic.CmConnectionOfTravelNotification
+      - topic.CmAppHealthNotification
+      - topic.CmSpatTimeChangeDetailsNotification
+      - topic.CmSignalStateConflictNotification
+      - topic.CmSignalGroupAlignmentNotification
+      - topic.CmIntersectionReferenceAlignmentNotification
+      - topic.CmLaneDirectionOfTravelAssessment
+      - topic.CmConnectionOfTravelAssessment
+      - topic.CmDefaultConfigTable
+      - topic.CmCustomConfigTable
+      - topic.CmMergedConfigTable
+      - topic.CmIntersectionConfigTable
+      - topic.CmNotification
+      - topic.CmMapBoundingBox
+      - topic.CmEvent
+      - topic.CmAssessment
+      - topic.CmStopLineStopAssessment
+      - topic.CmStopLineStopNotification
+      - topic.CmSignalStateEventAssessment
+      - topic.CmStopLinePassageNotification
+      - topic.CmMapRevisionCounterEvents
+      - topic.CmSpatRevisionCounterEvents
+      - topic.CmBsmRevisionCounterEvents
+      - topic.CmTimestampDeltaNotification
+  deduplicator:
+    name: jpo-deduplicator
+    streamTopics:
+      - topic.DeduplicatedProcessedMap
+      - topic.DeduplicatedProcessedMapWKT
+      - topic.DeduplicatedOdeMapJson
+      - topic.DeduplicatedOdeTimJson
+      - topic.DeduplicatedOdeRawEncodedTIMJson
+      - topic.DeduplicatedOdeBsmJson    
+    tableTopics: {}  

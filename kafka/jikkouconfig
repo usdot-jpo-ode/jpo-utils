@@ -1,0 +1,7 @@
+{
+  "currentContext" : "kafka",
+  "kafka" : {
+    "configFile" : "application.conf",
+    "configProps" : {}
+  }
+}

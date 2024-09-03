@@ -1,0 +1,17 @@
+FROM streamthoughts/jikkou:0.35.2
+
+# Root user is required to run the 'jikkou apply' command in the kafka_init.sh script
+USER root
+
+COPY ./application.conf /app/application.conf
+COPY ./jikkouconfig /etc/jikkou/config
+COPY ./kafka-topics-template.jinja /app/kafka-topics-template.jinja
+COPY ./kafka-topics-values.yaml /app/kafka-topics-values.yaml
+COPY ./kafka_init.sh /app/kafka_init.sh
+
+# Create/update topics then exit container
+ENTRYPOINT ./kafka_init.sh
+
+## For dev & testing, uncomment to keep the container running to be be able to
+## use the Jikkou command line within Docker Desktop:
+#ENTRYPOINT tail -f /dev/null

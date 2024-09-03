@@ -1,16 +1,19 @@
-sleep 2s
-/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
-echo 'Creating kafka topics'
+#!/bin/sh
 
-# Create topics
-/opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists  --topic "topic.OdeSpatJson" --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1
-/opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists  --topic "topic.OdeBsmJson" --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1
-/opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists  --topic "topic.OdeTimJson" --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1
-/opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists  --topic "topic.OdeMapJson" --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1
-/opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists  --topic "topic.OdeSsmJson" --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1
-/opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists  --topic "topic.OdeSrmJson" --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1
-/opt/bitnami/kafka/bin/kafka-topics.sh --create --if-not-exists  --topic "topic.OdePsmJson" --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1
+echo "KAFKA_TOPIC_CREATE_ODE=$KAFKA_TOPIC_CREATE_ODE"
+echo "KAFKA_TOPIC_CREATE_GEOJSONCONVERTER=$KAFKA_TOPIC_CREATE_GEOJSONCONVERTER"
+echo "KAFKA_TOPIC_CREATE_CONFLICTMONITOR=$KAFKA_TOPIC_CREATE_CONFLICTMONITOR"
+echo "KAFKA_TOPIC_CREATE_DEDUPLICATOR=$KAFKA_TOPIC_CREATE_DEDUPLICATOR"
 
-echo 'Kafka created with the following topics:'
-/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
-exit
+# Validate and log the filled-in template
+./jikkou validate \
+     --files kafka-topics-template.jinja \
+     --values-files kafka-topics-values.yaml 
+
+# Create or update topics
+./jikkou apply \
+    --files kafka-topics-template.jinja \
+    --values-files kafka-topics-values.yaml 
+
+
+ 

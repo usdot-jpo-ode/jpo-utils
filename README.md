@@ -15,6 +15,7 @@ The JPO ITS utilities repository serves as a central location for deploying open
   - [2. MongoDB](#2-mongodb)
     - [Quick Run](#quick-run)
   - [3. Kafka](#3-kafka)
+    - [Configure Topic Creation](#configure-topic-creation)
     - [Quick Run](#quick-run-1)
   - [4. MongoDB Kafka Connect](#4-mongodb-kafka-connect)
     - [Configuration](#configuration)
@@ -81,9 +82,29 @@ An optional `kafka-init`, `schema-registry`, and `kafka-ui` instance can be depl
 
 - `kafka_full` - deploys all resources in the [docker-compose-kafka.yml](docker-compose-kafka.yml) file
   - `kafka` - only deploys the `kafka` services
-  - `kafka_setup` - deploys a `kafka-setup` service that creates topics in the `kafka` service
+  - `kafka_setup` - deploys a `kafka-setup` service that creates topics in the `kafka` service.  
   - `kafka_schema_registry` - deploys a `kafka-schema-registry` service that can be used to manage schemas for kafka topics
   - `kafka_ui` - deploys a [web interface](https://github.com/kafbat/kafka-ui) to interact with the kafka cluster
+
+### Configure Topic Creation
+
+The Kafka topics created by the `kafka-setup` service are configured in the [kafka-topics-values.yaml](kafka/kafka-topics-values.yaml) file.  The topics in that file are organized by the application, and sorted into "Stream Topics" (those with `cleanup.policy` = `delete`) and "Table Topics" (with `cleanup.policy` = `compact`).  
+
+The following enviroment variables can be used to configure Kafka Topic creation.  
+
+| Environment Variable | Description |
+|---|---|
+| `KAFKA_TOPIC_CREATE_ODE` | Whether to create topics for the ODE |
+| `KAFKA_TOPIC_CREATE_GEOJSONCONVERTER` | Whether to create topics for the GeoJSON Converter |
+| `KAFKA_TOPIC_CREATE_CONFLICTMONITOR` | Whether to create topics for the Conflict Monitor |
+| `KAFKA_TOPIC_CREATE_DEDUPLICATOR` | Whether to create topics for the Deduplicator |
+| `KAFKA_TOPIC_PARTITIONS` | Number of partitions |
+| `KAFKA_TOPIC_REPLICAS` | Number of replicas |
+| `KAFKA_TOPIC_MIN_INSYNC_REPLICAS` | Minumum number of in-sync replicas (for use with ack=all) |
+| `KAFKA_TOPIC_RETENTION_MS` | Retention time for stream topics, milliseconds |
+| `KAFKA_TOPIC_DELETE_RETENTION_MS` | Tombstone retention time for compacted topics, milliseconds |
+
+
 
 ### Quick Run
 
@@ -92,7 +113,7 @@ An optional `kafka-init`, `schema-registry`, and `kafka-ui` instance can be depl
    1. Hint: look for "inet addr:" within "eth0" or "en0" for OSX
 3. Set the `COMPOSE_PROFILES` variable to: `kafka_full`
 4. Run the following command: `docker-compose up -d`
-5. Go to `localhost:8081` in your browser and verify that `kafka-ui` can see the created kafka cluster and initialized topics
+5. Go to `localhost:8001` in your browser and verify that `kafka-ui` can see the created kafka cluster and initialized topics
 
 [Back to top](#toc)
 
