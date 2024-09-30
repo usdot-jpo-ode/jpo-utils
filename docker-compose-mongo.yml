@@ -1,0 +1,98 @@
+services:
+  mongo:
+    profiles:
+      - all
+      - kafka_connect_standalone
+      - mongo_full
+      - mongo
+    image: mongo:7
+    hostname: mongo 
+    restart: ${RESTART_POLICY}
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ADMIN_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ADMIN_DB_PASS}
+      MONGO_INITDB_DATABASE: admin 
+    entrypoint:
+      - bash
+      - -c
+      - |
+          openssl rand -base64 741 > /mongo_keyfile
+          chmod 400 /mongo_keyfile
+          chown 999:999 /mongo_keyfile
+          exec docker-entrypoint.sh $$@
+    command: "mongod --bind_ip_all --replSet rs0 --keyFile /mongo_keyfile"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: | 
+        echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      start_period: 30s
+
+  mongo-setup:
+    profiles:
+      - all
+      - kafka_connect_standalone
+      - mongo_full
+      - mongo
+    image: mongo:7
+    hostname: mongo_setup
+    depends_on:
+      - mongo
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    environment:
+      MONGO_ADMIN_DB_USER: ${MONGO_ADMIN_DB_USER}
+      MONGO_ADMIN_DB_PASS: ${MONGO_ADMIN_DB_PASS}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      MONGO_READ_WRITE_USER: ${MONGO_READ_WRITE_USER}
+      MONGO_READ_WRITE_PASS: ${MONGO_READ_WRITE_PASS}
+      MONGO_COLLECTION_TTL: ${MONGO_COLLECTION_TTL}
+    entrypoint: ["/bin/bash", "setup_mongo.sh"]
+    volumes:
+      - ${MONGO_SETUP_SCRIPT_RELATIVE_PATH}:/setup_mongo.sh
+      - ${MONGO_CREATE_INDEXES_SCRIPT_RELATIVE_PATH}:/create_indexes.js
+
+  mongo-express:
+    profiles:
+      - all
+      - mongo_full
+      - mongo_express
+    image: mongo-express:1.0.2-18
+    hostname: mongo-express
+    restart: ${RESTART_POLICY}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    ports:
+      - "8002:8081"
+    depends_on:
+      - mongo
+    environment:
+      ME_CONFIG_MONGODB_SERVER: "mongo"
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USER}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASS}
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ADMIN_DB_USER}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ADMIN_DB_PASS}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 4
+
+volumes:
+  mongo_data:

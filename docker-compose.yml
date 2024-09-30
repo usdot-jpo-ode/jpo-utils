@@ -1,0 +1,4 @@
+include:
+  - docker-compose-connect.yml
+  - docker-compose-mongo.yml
+  - docker-compose-kafka.yml
