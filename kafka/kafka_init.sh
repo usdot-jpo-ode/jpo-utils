@@ -15,5 +15,19 @@ echo "KAFKA_TOPIC_CREATE_DEDUPLICATOR=$KAFKA_TOPIC_CREATE_DEDUPLICATOR"
     --files kafka-topics-template.jinja \
     --values-files kafka-topics-values.yaml 
 
+# sleep
+sleep 10
 
- 
+if ./jikkou health get kafkaconnect | yq -e '.status.name == "UP"' > /dev/null;
+     echo "Kafka Connect is ready"
+     ./jikkou health get kafkaconnect
+
+     # Run the validate and apply scripts
+     ./jikkou validate \
+          --files kafka-connectors-template.jinja \
+          --values-files kafka-connectors-values.yaml 
+
+     ./jikkou apply \
+          --files kafka-connectors-template.jinja \
+          --values-files kafka-connectors-values.yaml 
+fi

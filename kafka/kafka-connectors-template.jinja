@@ -1,0 +1,75 @@
+{# ----------------- Create Topics for app ----------------- #}
+{% macro create_connector(app) %}
+
+{# Table Topics #}
+{% for connector in app.connectors %}
+---
+apiVersion: "kafka.jikkou.io/v1beta1"  {#  The api version (required) #}
+kind: "KafkaConnector"                 {#  The resource kind (required) #}
+metadata:
+  name: sink.{{ connector.collectionName }}
+  labels:
+    kafka.jikkou.io/connect-cluster: {{ values.clusterName }}
+spec:
+  connectorClass: {{ system.env.KAFKA_CONNECT_CONNECTOR_CLASS | default(values.connectorClass) }}
+  tasksMax: {{ system.env.KAFKA_TOPIC_PARTITIONS | default(values.tasksMax) }}
+  config:
+    collection: {{ connector.collectionName }}
+    connection.uri: mongodb://{{ system.env.MONGO_CONNECTOR_USERNAME }}:{{ system.env.MONGO_CONNECTOR_PASSWORD }}@{{ system.env.MONGO_DB_IP }}:27017/
+    connector.class: com.mongodb.kafka.connect.MongoSinkConnector
+    database: {{ system.env.MONGO_DB_NAME }}
+    errors.log.enable: false
+    errors.log.include.messages: false
+    errors.tolerance: all
+    group.id: connector-consumer
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    key.converter.schemas.enable: false
+    mongo.errors.tolerance: all
+    topics: {{ connector.topicName }}
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false
+
+    {%+ if connector.generateTimestamp %}errors.deadletterqueue.topic.name: {{ connector.topicName }}.dlq{% endif %}
+    {%+ if connector.generateTimestamp %}errors.deadletterqueue.topic.replication.factor: {{ system.env.KAFKA_TOPIC_REPLICAS | default(values.replicas) }}{% endif %}
+
+    {%+ if connector.generateTimestamp %}transforms: AddTimestamp,AddedTimestampConverter{% endif %}
+    {%+ if connector.generateTimestamp %}transforms.AddedTimestampConverter.field: recordGeneratedAt{% endif %}
+    {%+ if connector.generateTimestamp %}transforms.AddedTimestampConverter.target.type: Timestamp{% endif %}
+    {%+ if connector.generateTimestamp %}transforms.AddedTimestampConverter.type: org.apache.kafka.connect.transforms.TimestampConverter$Value{% endif %}
+    {%+ if connector.generateTimestamp %}transforms.AddTimestamp.timestamp.field: recordGeneratedAt{% endif %}
+    {%+ if connector.generateTimestamp %}transforms.AddTimestamp.type: org.apache.kafka.connect.transforms.InsertField$Value{% endif %}
+
+    {%+ if connector.useTimestamp %}transforms: TimestampConverter{% endif %}
+    {%+ if connector.useTimestamp %}transforms.TimestampConverter.field: {{ connector.timestampField }}{% endif %}
+    {%+ if connector.useTimestamp %}transforms.TimestampConverter.type: org.apache.kafka.connect.transforms.TimestampConverter$Value{% endif %}
+    {%+ if connector.useTimestamp %}transforms.TimestampConverter.target.type: Timestamp{% endif %}
+
+    {%+ if connector.useKey %}document.id.strategy: com.mongodb.kafka.connect.sink.processor.id.strategy.PartialValueStrategy{% endif %}
+    {%+ if connector.useKey %}document.id.strategy.partial.value.projection.list: {{ connector.keyField }}{% endif %}
+    {%+ if connector.useKey %}document.id.strategy.partial.value.projection.type: AllowList{% endif %}
+    {%+ if connector.useKey %}document.id.strategy.overwrite.existing: true{% endif %}
+
+  state: "RUNNING"
+{% endfor %}
+
+{% endmacro %}
+
+{#-------  Create topics for apps with env variable = true ----------#}
+{% if system.env.KAFKA_TOPIC_CREATE_ODE %}
+{{ create_connector(values.apps.ode) }}
+{% endif %}
+
+{# {% if system.env.KAFKA_TOPIC_CREATE_GEOJSONCONVERTER %}
+{{ create_topics(values.apps.geojsonconverter) }}
+{% endif %}
+
+{% if system.env.KAFKA_TOPIC_CREATE_CONFLICTMONITOR %}
+{{ create_topics(values.apps.conflictmonitor) }}
+{% endif %}
+
+{% if system.env.KAFKA_TOPIC_CREATE_DEDUPLICATOR %}
+{{ create_topics(values.apps.deduplicator) }} #}
+{# {% endif %} #}
+
+
+

@@ -1,0 +1,70 @@
+#======================================================================================
+# Topic names and configuration settings
+#======================================================================================
+
+#--------------------------------------------------------------------------------------
+# Default values of topic configuration settings, 
+# can be overridden by environment variables.
+#   
+# Ref: https://kafka.apache.org/documentation/#topicconfigs
+#--------------------------------------------------------------------------------------
+
+# env var: KAFKA_TOPIC_PARTITIONS
+clusterName: "kafka-connect"
+connectorClass: "com.mongodb.kafka.connect.MongoSinkConnector"
+tasksMax: 1
+
+
+#--------------------------------------------------------------------------------------
+# Topics are grouped by application.  Apps with the corresponding environment variable
+# equal to true are create or updated.
+#   - ode
+#   - geojsonconverter
+#   - conflictmonitor
+#   - deduplicator
+# 
+# The topics for each app are grouped into "Stream" topics and "Table" topics:
+#   - Stream Topics are normal topics with cleanup.policy = delete
+#   - Table Topics are intended to back KTables and have cleanup.policy = compact
+#
+#--------------------------------------------------------------------------------------
+apps:
+  ode:
+    name: jpo-ode
+    connectors:
+      -
+        topicName: topic.FilteredOdeBsmJson
+        collectionName: OdeBsmJson
+        generateTimestamp: true
+      -
+        topicName: topic.OdeMapJson
+        collectionName: OdeMapJson
+        generateTimestamp: true
+      -
+        topicName: topic.OdeSpatJson
+        collectionName: OdeSpatJson
+        generateTimestamp: true
+      -
+        topicName: topic.OdeTimJson
+        collectionName: OdeTimJson
+        generateTimestamp: true
+      -
+        topicName: topic.OdeTimJsonTMCFiltered
+        collectionName: OdeTimJsonTMCFiltered
+        generateTimestamp: true
+      -
+        topicName: topic.OdePsmJson
+        collectionName: OdePsmJson
+        generateTimestamp: true
+      -
+        topicName: topic.OdeDriverAlertJson
+        collectionName: OdeDriverAlertJson
+        generateTimestamp: true
+      -
+        topicName: topic.OdeSrmJson
+        collectionName: OdeSrmJson
+        generateTimestamp: true
+      -
+        topicName: topic.OdeSsmJson
+        collectionName: OdeSsmJson
+        generateTimestamp: true

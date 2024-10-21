@@ -52,7 +52,7 @@ services:
     build:
       context: kafka
       dockerfile: Dockerfile.jikkou
-    restart: on-failure:3 # try up to 3 times
+    restart: on-failure:3
     deploy:
       resources:
         limits:
@@ -71,7 +71,10 @@ services:
       KAFKA_TOPIC_CREATE_GEOJSONCONVERTER: ${KAFKA_TOPIC_CREATE_GEOJSONCONVERTER}
       KAFKA_TOPIC_CREATE_CONFLICTMONITOR: ${KAFKA_TOPIC_CREATE_CONFLICTMONITOR}
       KAFKA_TOPIC_CREATE_DEDUPLICATOR: ${KAFKA_TOPIC_CREATE_DEDUPLICATOR}
-  
+      MONGO_CONNECTOR_USERNAME: ${MONGO_ADMIN_DB_USER}
+      MONGO_CONNECTOR_PASSWORD: ${MONGO_ADMIN_DB_PASS}
+      MONGO_DB_IP: ${MONGO_IP}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
 
   kafka-schema-registry:
     profiles:

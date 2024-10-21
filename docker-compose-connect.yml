@@ -16,6 +16,11 @@ services:
           memory: 4G
     ports:
       - "8083:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/connectors"]
+      interval: 30s
+      timeout: 10s
+      retries: 4
     depends_on:
       mongo:
         condition: service_healthy
@@ -43,5 +48,5 @@ services:
       CONNECT_LOG4J_ROOT_LOGLEVEL: ${CONNECT_LOG_LEVEL}
       CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=${CONNECT_LOG_LEVEL},org.reflections=${CONNECT_LOG_LEVEL},com.mongodb.kafka=${CONNECT_LOG_LEVEL}"
       CONNECT_PLUGIN_PATH: /usr/share/confluent-hub-components
-    volumes:
-      - ${CONNECT_SCRIPT_RELATIVE_PATH}:/scripts/connect_start.sh
+    # volumes:
+    #   - ${CONNECT_SCRIPT_RELATIVE_PATH}:/scripts/connect_start.sh

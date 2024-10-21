@@ -7,4 +7,4 @@ RUN confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:1.13.0
 # Docs: https://docs.confluent.io/platform/current/connect/transforms/overview.html
 RUN confluent-hub install --no-prompt confluentinc/connect-transforms:1.4.7
 
-CMD ["bash", "-c", "/scripts/connect_wait.sh"]
+# CMD ["bash", "-c", "/scripts/connect_wait.sh"]

@@ -3,11 +3,20 @@ FROM streamthoughts/jikkou:0.35.2
 # Root user is required to run the 'jikkou apply' command in the kafka_init.sh script
 USER root
 
+# install yq for kafka connect status check
+RUN apk add yq
+
 COPY ./application.conf /app/application.conf
 COPY ./jikkouconfig /etc/jikkou/config
+
+# kafka topic creation files
 COPY ./kafka-topics-template.jinja /app/kafka-topics-template.jinja
 COPY ./kafka-topics-values.yaml /app/kafka-topics-values.yaml
 COPY ./kafka_init.sh /app/kafka_init.sh
+
+# kafka connect creation files
+COPY ./kafka-connectors-template.jinja /app/kafka-connectors-template.jinja
+COPY ./kafka-connectors-values.yaml /app/kafka-connectors-values.yaml
 
 # Create/update topics then exit container
 ENTRYPOINT ./kafka_init.sh
