@@ -15,7 +15,7 @@ spec:
   tasksMax: {{ system.env.KAFKA_TOPIC_PARTITIONS | default(values.tasksMax) }}
   config:
     collection: {{ connector.collectionName }}
-    connection.uri: mongodb://{{ system.env.MONGO_CONNECTOR_USERNAME }}:{{ system.env.MONGO_CONNECTOR_PASSWORD }}@{{ system.env.MONGO_DB_IP }}:27017/
+    connection.uri: {% if system.env.MONGO_URI %}{{ system.env.MONGO_URI }}{% else %}mongodb://{{ system.env.MONGO_CONNECTOR_USERNAME }}:{{ system.env.MONGO_CONNECTOR_PASSWORD }}@{{ system.env.MONGO_DB_IP }}:27017/{% endif %}
     connector.class: com.mongodb.kafka.connect.MongoSinkConnector
     database: {{ system.env.MONGO_DB_NAME }}
     errors.log.enable: false

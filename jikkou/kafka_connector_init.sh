@@ -13,6 +13,12 @@ RETRY_COUNT=0
 until ./jikkou health get kafkaconnect | yq -e '.status.name == "UP"' > /dev/null; do
      echo "Waiting 10 sec for Kafka Connect to be ready (Attempt: $((RETRY_COUNT+1))/$MAX_RETRIES)"
      RETRY_COUNT=$((RETRY_COUNT+1))
+     
+     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+          echo "Max retries ($MAX_RETRIES) reached. Exiting..."
+          exit 1
+     fi
+     
      sleep 10
 done
 
@@ -23,3 +29,6 @@ done
 ./jikkou apply \
      --files kafka-connectors-template.jinja \
      --values-files kafka-connectors-values.yaml 
+
+echo "Kafka Connectors applied successfully"
+exit 0
