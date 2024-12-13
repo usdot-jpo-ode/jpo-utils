@@ -1,0 +1,12 @@
+#!/bin/sh
+# Prometheus refuses to use environment vars.
+# You do what we tell you to do prometheus.
+for i in $(env); do
+        if [ $(echo $i | grep -E "^PROMETHEUS_") ]; then
+                KEY=$(echo "$i" | sed -E "s/^PROMETHEUS_([A-Z]*)=.*/\1/")
+                VALUE=$(echo "$i" | sed -E "s/^PROMETHEUS_[A-Z]*=(.*)/\1/")
+                sed -i "s|%%${KEY}%%|${VALUE}|g" /etc/prometheus/prometheus.yml
+        fi
+done
+
+exec /bin/prometheus "$@"

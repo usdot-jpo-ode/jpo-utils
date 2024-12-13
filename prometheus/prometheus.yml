@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+    - targets:
+      - localhost:9090
+  - job_name: 'confluent-scraper'
+    # scrape_interval: 1m
+    # scrape_timeout: 1m
+    honor_timestamps: true
+    static_configs:
+    - targets:
+      - api.telemetry.confluent.cloud
+    scheme: https
+    basic_auth:
+      username_file: /etc/prometheus/secrets/username
+      password: test
+    metrics_path: /v2/metrics/cloud/export
+    params:
+        "resource.kafka.id":
+          - lkc-12yww6
