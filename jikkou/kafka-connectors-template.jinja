@@ -70,3 +70,7 @@ spec:
 {{ create_connector(values.apps.ode_duplicated) }}
 {{ create_connector(values.apps.geojsonconverter_duplicated) }}
 {% endif %}
+
+{% if system.env.CONNECT_CREATE_MECDEPOSIT %}
+{{ create_connector(values.apps.mecdeposit) }}
+{% endif %}

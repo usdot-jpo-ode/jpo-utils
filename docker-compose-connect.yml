@@ -24,8 +24,10 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+        required: false
       kafka:
         condition: service_healthy
+        required: false
     environment:
       CONNECT_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       CONNECT_REST_ADVERTISED_HOST_NAME: connect
@@ -54,6 +56,7 @@ services:
       - all
       - kafka_connect
       - kafka_connect_standalone
+      - kafka_connect_setup
     image: jpo-jikkou
     build:
       context: jikkou
@@ -68,6 +71,7 @@ services:
     depends_on:
       kafka-connect:
         condition: service_healthy
+        required: false
     environment:
       CONNECT_URL: ${CONNECT_URL}
       CONNECT_TASKS_MAX: ${CONNECT_TASKS_MAX}
@@ -75,6 +79,7 @@ services:
       CONNECT_CREATE_GEOJSONCONVERTER: ${CONNECT_CREATE_GEOJSONCONVERTER}
       CONNECT_CREATE_CONFLICTMONITOR: ${CONNECT_CREATE_CONFLICTMONITOR}
       CONNECT_CREATE_DEDUPLICATOR: ${CONNECT_CREATE_DEDUPLICATOR}
+      CONNECT_CREATE_MECDEPOSIT: ${CONNECT_CREATE_MECDEPOSIT}
       MONGO_CONNECTOR_USERNAME: ${MONGO_ADMIN_DB_USER}
       MONGO_CONNECTOR_PASSWORD: ${MONGO_ADMIN_DB_PASS:?}
       MONGO_DB_IP: ${MONGO_IP}

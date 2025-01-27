@@ -75,3 +75,7 @@ spec:
 {% if system.env.KAFKA_TOPIC_CREATE_DEDUPLICATOR %}
 {{ create_topics(values.apps.deduplicator) }}
 {% endif %}
+
+{% if system.env.KAFKA_TOPIC_CREATE_MECDEPOSIT %}
+{{ create_topics(values.apps.mecdeposit) }}
+{% endif %}

@@ -19,7 +19,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 4G
     volumes:
       - kafka:/bitnami
@@ -40,9 +40,8 @@ services:
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
     logging:
       options:
-        max-size: "10m"  
+        max-size: "10m"
         max-file: "5"
-
 
   kafka-setup:
     profiles:
@@ -58,11 +57,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 1G
     depends_on:
       kafka:
         condition: service_healthy
+        required: false
     environment:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS}
@@ -74,12 +74,13 @@ services:
       KAFKA_TOPIC_CREATE_GEOJSONCONVERTER: ${KAFKA_TOPIC_CREATE_GEOJSONCONVERTER}
       KAFKA_TOPIC_CREATE_CONFLICTMONITOR: ${KAFKA_TOPIC_CREATE_CONFLICTMONITOR}
       KAFKA_TOPIC_CREATE_DEDUPLICATOR: ${KAFKA_TOPIC_CREATE_DEDUPLICATOR}
-      MONGO_CONNECTOR_USERNAME: ${MONGO_ADMIN_DB_USER}
-      MONGO_CONNECTOR_PASSWORD: ${MONGO_ADMIN_DB_PASS}
-      MONGO_DB_IP: ${MONGO_IP}
-      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      KAFKA_TOPIC_CREATE_MECDEPOSIT: ${KAFKA_TOPIC_CREATE_MECDEPOSIT}
     volumes:
       - ${KAFKA_TOPIC_CONFIG_RELATIVE_PATH:-./jikkou/kafka-topics-values.yaml}:/app/kafka-topics-values.yaml
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   kafka-schema-registry:
     profiles:
@@ -91,11 +92,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 1G
     depends_on:
       kafka:
         condition: service_healthy
+        required: false
     ports:
       - "8081:8081"
     environment:
@@ -108,6 +110,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 4
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   kafka-ui:
     profiles:
@@ -115,24 +121,29 @@ services:
       - kafka_full
       - kafka_ui
     hostname: kafka-ui
-    image: ghcr.io/kafbat/kafka-ui:v1.0.0
+    image: ghcr.io/kafbat/kafka-ui:v1.1.0
     restart: ${RESTART_POLICY}
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 1G
     ports:
       - 8001:8080
     depends_on:
       kafka:
         condition: service_healthy
+        required: false
     environment:
-      DYNAMIC_CONFIG_ENABLED: 'true'
+      DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: kafka-connect
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: ${CONNECT_URL}
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 volumes:
   kafka:

@@ -133,8 +133,8 @@ apps:
         collectionName: OdeTimJson
         generateTimestamp: true
         connectorName: DeduplicatedOdeTimJson
-      - topicName: topic.OdeRawEncodedTIMJson
-        collectionName: OdeTimJson
+      - topicName: topic.DeduplicatedOdeRawEncodedTIMJson
+        collectionName: OdeRawEncodedTIMJson
         generateTimestamp: true
         connectorName: DeduplicatedOdeRawEncodedTIMJson
       - topicName: topic.DeduplicatedOdeBsmJson
@@ -213,6 +213,46 @@ apps:
         collectionName: CmBsmMessageCountProgressionEvents
         useTimestamp: true
         timestampField: eventGeneratedAt
+      - topicName: topic.CmSpatMinimumDataEventAggregation
+        collectionName: CmSpatMinimumDataEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmMapMinimumDataEventAggregation
+        collectionName: CmMapMinimumDataEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmIntersectionReferenceAlignmentEventAggregation
+        collectionName: CmIntersectionReferenceAlignmentEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmSignalGroupAlignmentEventAggregation
+        collectionName: CmSignalGroupAlignmentEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmSignalStateConflictEventAggregation
+        collectionName: CmSignalStateConflictEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmSpatTimeChangeDetailsEventAggregation
+        collectionName: CmSpatTimeChangeDetailsEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmEventStateProgressionEventAggregation
+        collectionName: CmEventStateProgressionEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmBsmMessageCountProgressionEventAggregation
+        collectionName: CmBsmMessageCountProgressionEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmMapMessageCountProgressionEventAggregation
+        collectionName: CmMapMessageCountProgressionEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
+      - topicName: topic.CmSpatMessageCountProgressionEventAggregation
+        collectionName: CmSpatMessageCountProgressionEventAggregation
+        generateTimestamp: true
+        timestampField: eventGeneratedAt
 
       # Record BSM events:
       - topicName: topic.CmBsmEvents
@@ -288,5 +328,31 @@ apps:
         keyField: key
       - topicName: topic.CmEventStateProgressionNotification
         collectionName: CmEventStateProgressionNotification
-        useTimestamp: true
+        generateTimestamp: true
         timestampField: eventGeneratedAt
+      - topicName: topic.CmIntersectionReferenceAlignmentNotificationAggregation
+        collectionName: CmIntersectionReferenceAlignmentNotificationAggregation
+        generateTimestamp: true
+        timestampField: notificationGeneratedAt
+      - topicName: topic.CmSignalGroupAlignmentNotificationAggregation
+        collectionName: CmSignalGroupAlignmentNotificationAggregation
+        generateTimestamp: true
+        timestampField: notificationGeneratedAt
+      - topicName: topic.CmSignalStateConflictNotificationAggregation
+        collectionName: CmSignalStateConflictNotificationAggregation
+        generateTimestamp: true
+        timestampField: notificationGeneratedAt
+      - topicName: topic.CmSpatTimeChangeDetailsNotificationAggregation
+        collectionName: CmSpatTimeChangeDetailsNotificationAggregation
+        generateTimestamp: true
+        timestampField: notificationGeneratedAt
+      - topicName: topic.CmEventStateProgressionNotificationAggregation
+        collectionName: CmEventStateProgressionNotificationAggregation
+        generateTimestamp: true
+        timestampField: notificationGeneratedAt
+  mecdeposit:
+    name: mecdeposit
+    connectors:
+      - topicName: topic.MecDepositMetrics
+        collectionName: MecDepositMetrics
+        generateTimestamp: true

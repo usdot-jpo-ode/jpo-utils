@@ -82,6 +82,7 @@ apps:
       - topic.OdeRawEncodedPSMJson
       - topic.OdePsmTxPojo
       - topic.OdePsmJson
+      - topic.OdeTimRxJson
     tableTopics: {}
     customTopics: {}
   geojsonconverter:
@@ -114,6 +115,16 @@ apps:
       - topic.CmBsmIntersection
       - topic.CmKafkaStateChangeEvents
       - topic.CmTimestampDeltaEvent
+      - topic.CmSpatMinimumDataEventAggregation
+      - topic.CmMapMinimumDataEventAggregation
+      - topic.CmIntersectionReferenceAlignmentEventAggregation
+      - topic.CmSignalGroupAlignmentEventAggregation
+      - topic.CmSignalStateConflictEventAggregation
+      - topic.CmSpatTimeChangeDetailsEventAggregation
+      - topic.CmEventStateProgressionEventAggregation
+      - topic.CmBsmMessageCountProgressionEventAggregation
+      - topic.CmMapMessageCountProgressionEventAggregation
+      - topic.CmSpatMessageCountProgressionEventAggregation
     tableTopics:
       - topic.CmLaneDirectionOfTravelNotification
       - topic.CmConnectionOfTravelNotification
@@ -140,6 +151,12 @@ apps:
       - topic.CmSpatRevisionCounterEvents
       - topic.CmBsmRevisionCounterEvents
       - topic.CmTimestampDeltaNotification
+      - topic.CmIntersectionReferenceAlignmentNotificationAggregation
+      - topic.CmSignalGroupAlignmentNotificationAggregation
+      - topic.CmSignalStateConflictNotificationAggregation
+      - topic.CmSpatTimeChangeDetailsNotificationAggregation
+      - topic.CmEventStateProgressionNotificationAggregation
+      - topic.CmEventStateProgressionNotification
     customTopics: {}
   deduplicator:
     name: jpo-deduplicator
@@ -166,3 +183,9 @@ apps:
       - topicName: topic.KafkaConnectStatus
         partitions: 10
         cleanUpPolicy: compact
+  mecdeposit:
+    name: jpo-mecdeposit
+    streamTopics:
+      - topic.MecDepositMetrics
+    tableTopics: {}
+    customTopics: {}

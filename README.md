@@ -21,6 +21,7 @@ The JPO ITS utilities repository serves as a central location for deploying open
     - [Configuration](#configuration)
     - [Configure Kafka Connector Creation](#configure-kafka-connector-creation)
     - [Quick Run](#quick-run-2)
+  - [Security Notice](#security-notice)
 
 
 <a name="base-configuration"></a>
@@ -186,3 +187,12 @@ The following environment variables can be used to configure Kafka Connectors:
 8. Feel free to test this with other topics or by producing to these topics using the [ODE](https://github.com/usdot-jpo-ode/jpo-ode)
 
 [Back to top](#toc)
+
+## Security Notice
+
+While default passwords are provided for development convenience, it is **strongly recommended** to:
+
+1. Change all passwords before deploying to any environment
+2. Never use default passwords in production
+3. Use secure password generation and management practices
+4. Consider using Docker secrets or environment management tools for production deployments

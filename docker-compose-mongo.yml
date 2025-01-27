@@ -52,7 +52,8 @@ services:
       - ./mongo/manage-volume-cron:/data/manage-volume-cron
       - ./mongo/manage_volume.js:/data/manage_volume.js
     healthcheck:
-      test: "echo 'db.runCommand(\"ping\").ok' | mongosh --quiet --username ${MONGO_ADMIN_DB_USER} --password ${MONGO_ADMIN_DB_PASS} --authenticationDatabase admin --eval \"rs.status().ok\""
+      # Removal of replica set status check as the mongo-setup container is what actually configures the replica set
+      test: mongosh --quiet --username ${MONGO_ADMIN_DB_USER} --password ${MONGO_ADMIN_DB_PASS} --authenticationDatabase admin --eval "db.adminCommand('ping').ok"
       interval: 10s
       timeout: 10s
       retries: 10
@@ -66,7 +67,9 @@ services:
     image: mongo:8
     hostname: mongo_setup
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+        required: false
     restart: on-failure
     deploy:
       resources:
@@ -88,7 +91,7 @@ services:
       CONNECT_CREATE_GEOJSONCONVERTER: ${CONNECT_CREATE_GEOJSONCONVERTER}
       CONNECT_CREATE_CONFLICTMONITOR: ${CONNECT_CREATE_CONFLICTMONITOR}
       CONNECT_CREATE_DEDUPLICATOR: ${CONNECT_CREATE_DEDUPLICATOR}
-      
+      CONNECT_CREATE_MECDEPOSIT: ${CONNECT_CREATE_MECDEPOSIT}
     entrypoint: ["/bin/bash", "setup_mongo.sh"]
     volumes:
       - ${MONGO_SETUP_SCRIPT_RELATIVE_PATH}:/setup_mongo.sh
@@ -111,7 +114,9 @@ services:
     ports:
       - "8002:8081"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+        required: false
     environment:
       ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
       ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USER}
