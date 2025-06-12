@@ -17,3 +17,4 @@ jobs:
     uses: usdot-jpo-ode/actions/.github/workflows/docker.yml@main
     with:
       context: kafka-connect
+      file: kafka-connect/Dockerfile
