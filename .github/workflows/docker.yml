@@ -1,35 +1,21 @@
+# This workflow will only build for Pull Requests which are opened, changed , merged 
 name: Docker build
-
 on:
   pull_request:
-      types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [feature/update_docker_workflows]
 
-jobs: 
-  jpo-jikkou:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build
-        uses: docker/build-push-action@v3
-        with:
-          context: jikkou
-          file: jikkou/Dockerfile.jikkou
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-  
-  jpo-kafka-connect:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build
-        uses: docker/build-push-action@v3
-        with:
-          context: kafka-connect
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+jobs:
+  dockerhub-jpo-jikkou:
+    uses: usdot-jpo-ode/actions/.github/workflows/docker.yml@main
+    with:
+      image: usdotjpoode/jpo-jikkou
+      context: jikkou
+      file: jikkou/Dockerfile.jikkou
+
+  dockerhub-jpo-kafka-connect:
+    uses: usdot-jpo-ode/actions/.github/workflows/docker.yml@main
+    with:
+      image: usdotjpoode/jpo-kafka-connect
+      context: kafka-connect
