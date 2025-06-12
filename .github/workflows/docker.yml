@@ -10,12 +10,10 @@ jobs:
   dockerhub-jpo-jikkou:
     uses: usdot-jpo-ode/actions/.github/workflows/docker.yml@main
     with:
-      image: usdotjpoode/jpo-jikkou
       context: jikkou
       file: jikkou/Dockerfile.jikkou
 
   dockerhub-jpo-kafka-connect:
     uses: usdot-jpo-ode/actions/.github/workflows/docker.yml@main
     with:
-      image: usdotjpoode/jpo-kafka-connect
       context: kafka-connect
