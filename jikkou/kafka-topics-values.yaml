@@ -209,6 +209,7 @@ apps:
     name: jpo-mecdeposit
     streamTopics:
       - topic.MecDepositMetrics
+      - topic.GeoHashRoutedMsg
     tableTopics: {}
     customTopics: {}
   other:
