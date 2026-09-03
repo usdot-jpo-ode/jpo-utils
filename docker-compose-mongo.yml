@@ -132,7 +132,7 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ADMIN_DB_PASS:-replace_me}
       ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ADMIN_DB_USER:-admin}:${MONGO_ADMIN_DB_PASS:-replace_me}@${MONGO_IP:-mongo}:27017/?authSource=admin&directConnection=true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      test: ["CMD", "wget", "--spider","--tries=1", "http://localhost:8081/status"]
       interval: 30s
       timeout: 10s
       retries: 4

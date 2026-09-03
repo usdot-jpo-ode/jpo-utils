@@ -78,6 +78,10 @@ apps:
       - topic.OdeRtcmJson
       - topic.OdeRawEncodedRSMJson
       - topic.OdeRsmJson
+      - topic.OdeSpatTxPojo
+      - topic.OdeMapTxPojo
+      - topic.OdeBsmPojo
+      - topic.OdeTimBroadcastJson
     tableTopics: {}
     customTopics: {}
   geojsonconverter:
@@ -90,6 +94,8 @@ apps:
       - topic.ProcessedRtcm
       - topic.ProcessedSrm
       - topic.ProcessedSsm
+      - topic.ProcessedMapNOT
+      - topic.ProcessedSpatNOT
     tableTopics: {}
     customTopics: {}
   conflictmonitor:
@@ -109,6 +115,7 @@ apps:
       - topic.CmSignalGroupAlignmentEvents
       - topic.CmIntersectionReferenceAlignmentEvents
       - topic.CmSignalStateConflictEvents
+      - topic.CmMapSpatAlignment
       - topic.CmBsmJsonRepartition
       - topic.CmBsmIntersection
       - topic.CmKafkaStateChangeEvents

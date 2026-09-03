@@ -46,9 +46,9 @@ apps:
   ode:
     name: jpo-ode
     connectors:
-      - topicName: topic.OdeSpatJson
-        collectionName: OdeSpatJson
-        generateTimestamp: true
+      # - topicName: topic.OdeSpatJson
+      #   collectionName: OdeSpatJson
+      #   generateTimestamp: true
       - topicName: topic.OdeTimJsonTMCFiltered
         collectionName: OdeTimJsonTMCFiltered
         generateTimestamp: true
@@ -179,18 +179,18 @@ apps:
         collectionName: CmSpatTimeChangeDetailsEvent
         useTimestamp: true
         timestampField: eventGeneratedAt
-      - topicName: topic.CmSpatMinimumDataEvents
-        collectionName: CmSpatMinimumDataEvents
-        useTimestamp: true
-        timestampField: eventGeneratedAt
+      # - topicName: topic.CmSpatMinimumDataEvents
+      #   collectionName: CmSpatMinimumDataEvents
+      #   useTimestamp: true
+      #   timestampField: eventGeneratedAt
       - topicName: topic.CmMapBroadcastRateEvents
         collectionName: CmMapBroadcastRateEvents
         useTimestamp: true
         timestampField: eventGeneratedAt
-      - topicName: topic.CmMapMinimumDataEvents
-        collectionName: CmMapMinimumDataEvents
-        useTimestamp: true
-        timestampField: eventGeneratedAt
+      # - topicName: topic.CmMapMinimumDataEvents
+      #   collectionName: CmMapMinimumDataEvents
+      #   useTimestamp: true
+      #   timestampField: eventGeneratedAt
       - topicName: topic.CmSpatBroadcastRateEvents
         collectionName: CmSpatBroadcastRateEvents
         useTimestamp: true
@@ -205,10 +205,10 @@ apps:
         collectionName: CmEventStateProgressionEvent
         useTimestamp: true
         timestampField: eventGeneratedAt
-      - topicName: topic.CmSpatMessageCountProgressionEvents
-        collectionName: CmSpatMessageCountProgressionEvents
-        useTimestamp: true
-        timestampField: eventGeneratedAt
+      # - topicName: topic.CmSpatMessageCountProgressionEvents
+      #   collectionName: CmSpatMessageCountProgressionEvents
+      #   useTimestamp: true
+      #   timestampField: eventGeneratedAt
       - topicName: topic.CmMapMessageCountProgressionEvents
         collectionName: CmMapMessageCountProgressionEvents
         useTimestamp: true
