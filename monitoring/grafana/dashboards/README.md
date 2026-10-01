@@ -14,7 +14,7 @@ https://github.com/seglo/kafka-lag-exporter/blob/master/grafana/Kafka_Lag_Export
 
 ## ODE FFMLib Decode
 
-`ffmlib-decode.json` graphs in-process FFMLib decode rate, failures, drops, and latency from the ODE Prometheus endpoint.
+`ffmlib-decode.json` graphs in-process FFMLib decode rate, failures, drops, latency, raw UDP publication, routed output delivery, and offset-commit health from the ODE Prometheus endpoint.
 
 ## ODE Kafka Produced
 
