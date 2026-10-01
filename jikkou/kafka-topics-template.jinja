@@ -19,6 +19,24 @@ spec:
     retention.ms: {{ system.env.KAFKA_TOPIC_RETENTION_MS | default(values.retentionMs) }} 
 {% endfor %}
 
+{# dead-letter topics #}
+{% for topicName in app.dlqTopics | default([]) %}
+---
+apiVersion: "kafka.jikkou.io/v1beta2"
+kind: KafkaTopic
+metadata:
+  name: "{{ topicName }}"
+  labels:
+    app: "{{ app.name }}"
+spec:
+  partitions: {{ system.env.KAFKA_DLQ_TOPIC_PARTITIONS | default(values.dlqPartitions) }}
+  replicas: {{ system.env.KAFKA_TOPIC_REPLICAS | default(values.replicas) }}
+  configs:
+    cleanup.policy: delete
+    min.insync.replicas: {{ system.env.KAFKA_TOPIC_MIN_INSYNC_REPLICAS | default(values.minInsyncReplicas) }}
+    retention.ms: {{ system.env.KAFKA_DLQ_TOPIC_RETENTION_MS | default(values.dlqRetentionMs) }}
+{% endfor %}
+
 {# Table Topics #}
 {% for topicName in app.tableTopics | default([]) %}
 ---
