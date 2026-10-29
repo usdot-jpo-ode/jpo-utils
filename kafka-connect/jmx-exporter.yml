@@ -1,0 +1,47 @@
+# Prometheus JMX exporter rules for the Kafka Connect worker.
+# Exposes worker, connector, task, sink task and task error metrics on :9404/metrics.
+# Ref: https://kafka.apache.org/documentation/#connect_monitoring
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+includeObjectNames:
+  - "kafka.connect:*"
+rules:
+  # Connector and task state as labeled gauges (value is always 1), e.g. status="running" or status="failed"
+  - pattern: 'kafka.connect<type=connector-metrics, connector=([^,]+)><>status: ([a-z-]+)'
+    name: kafka_connect_connector_status
+    value: 1
+    type: GAUGE
+    labels:
+      connector: "$1"
+      status: "$2"
+  - pattern: 'kafka.connect<type=connector-task-metrics, connector=([^,]+), task=([^,]+)><>status: ([a-z-]+)'
+    name: kafka_connect_connector_task_status
+    value: 1
+    type: GAUGE
+    labels:
+      connector: "$1"
+      task: "$2"
+      status: "$3"
+
+  # Per connector task counts, e.g. kafka_connect_worker_connector_connector_failed_task_count
+  - pattern: 'kafka.connect<type=connect-worker-metrics, connector=([^,]+)><>([a-z-]+)'
+    name: kafka_connect_worker_connector_$2
+    type: GAUGE
+    labels:
+      connector: "$1"
+
+  # Worker level metrics, e.g. kafka_connect_worker_connector_count
+  - pattern: 'kafka.connect<type=connect-worker-metrics><>([a-z-]+)'
+    name: kafka_connect_worker_$1
+    type: GAUGE
+
+  # Sink task, connector task and task error metrics, e.g.
+  #   kafka_connect_sink_task_metrics_sink_record_read_total
+  #   kafka_connect_connector_task_metrics_offset_commit_failure_percentage
+  #   kafka_connect_task_error_metrics_deadletterqueue_produce_requests
+  - pattern: 'kafka.connect<type=(sink-task-metrics|connector-task-metrics|task-error-metrics), connector=([^,]+), task=([^,]+)><>([a-z-]+)'
+    name: kafka_connect_$1_$4
+    type: GAUGE
+    labels:
+      connector: "$2"
+      task: "$3"
