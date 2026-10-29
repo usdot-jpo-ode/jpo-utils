@@ -222,6 +222,11 @@ apps:
         partitions: 1
         cleanUpPolicy: delete
         fixedRetentionMs: 604800000  # 7 days
+      # Dead letter queue for the compact raw S3 archive connector (docs/S3_Archive.md)
+      - topicName: dlq.S3RawArchive
+        partitions: 1
+        cleanUpPolicy: delete
+        fixedRetentionMs: 604800000  # 7 days
   mecdeposit:
     name: jpo-mecdeposit
     streamTopics:

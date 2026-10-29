@@ -3,10 +3,10 @@
 # Ref: https://kafka.apache.org/documentation/#connect_monitoring
 #
 # Worker and connector level metrics are exported for every connector. Task level metrics are only exported for
-# the S3 archive connector. With the default CONNECT_TASKS_MAX=10 the Mongo sinks run more than 800 tasks, and
+# the S3 archive connectors. With the default CONNECT_TASKS_MAX=10 the Mongo sinks run more than 800 tasks, and
 # reading every task MBean made a scrape take longer than the Prometheus scrape timeout. To export task metrics
-# for another connector, add its name to the task level includeObjectNames entries. If the S3 archive connector
-# is renamed (s3Archive.connectorName), update those entries to match.
+# for another connector, add its name to the task level includeObjectNames entries. If an S3 archive connector
+# is renamed (s3Archive.connectorName or s3RawArchive.connectorName), update those entries to match.
 lowercaseOutputName: true
 lowercaseOutputLabelNames: true
 includeObjectNames:
@@ -15,6 +15,9 @@ includeObjectNames:
   - "kafka.connect:type=connector-task-metrics,connector=sink.S3Archive,*"
   - "kafka.connect:type=sink-task-metrics,connector=sink.S3Archive,*"
   - "kafka.connect:type=task-error-metrics,connector=sink.S3Archive,*"
+  - "kafka.connect:type=connector-task-metrics,connector=sink.S3RawArchive,*"
+  - "kafka.connect:type=sink-task-metrics,connector=sink.S3RawArchive,*"
+  - "kafka.connect:type=task-error-metrics,connector=sink.S3RawArchive,*"
 rules:
   # Connector and task state as labeled gauges (value is always 1), e.g. status="running" or status="failed"
   - pattern: 'kafka.connect<type=connector-metrics, connector=([^,]+)><>status: ([a-z-]+)'
@@ -46,6 +49,7 @@ rules:
     type: GAUGE
 
   # Task level metrics used by the S3 archive dashboard and alerts, e.g.
+  # (the attribute lists below apply to both S3 archive connectors)
   #   kafka_connect_sink_task_metrics_sink_record_read
   #   kafka_connect_connector_task_metrics_offset_commit_failure_percentage
   #   kafka_connect_task_error_metrics_deadletterqueue_produce_requests

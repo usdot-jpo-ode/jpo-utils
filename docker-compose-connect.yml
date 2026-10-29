@@ -108,6 +108,9 @@ services:
       CONNECT_S3_SSE_KMS_KEY_ID: ${CONNECT_S3_SSE_KMS_KEY_ID:-}
       CONNECT_S3_ACL_CANNED: ${CONNECT_S3_ACL_CANNED:-}
       CONNECT_S3_STORE_URL: ${CONNECT_S3_STORE_URL:-}
+      # Compact raw S3 archive connector, uses the CONNECT_S3_* bucket, environment and encryption settings above
+      CONNECT_CREATE_S3_RAW_ARCHIVE: ${CONNECT_CREATE_S3_RAW_ARCHIVE:-false}
+      CONNECT_S3_RAW_TOPICS: ${CONNECT_S3_RAW_TOPICS:-}
     volumes:
       - ${CONNECT_KAFKA_CONNECTORS_VALUES_FILE:-./jikkou/kafka-connectors-values.yaml}:/kafka-connectors-values.yaml
 

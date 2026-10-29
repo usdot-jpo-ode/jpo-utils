@@ -83,8 +83,52 @@ spec:
 {{ create_connector(values.apps.other) }}
 {% endif %}
 
-{#-------  Create S3 archive sink connector with env variable CONNECT_CREATE_S3_ARCHIVE = true ----------#}
+{# ----------------- S3 sink settings shared by the S3 archive connectors ----------------- #}
+{# Bucket, region, environment, partitioning, retries and encryption come from values.s3Archive and the
+   CONNECT_S3_* env variables. s3 is the connector's own values section (dlqTopicName). #}
 {# Ref: https://docs.confluent.io/kafka-connectors/s3-sink/current/configuration_options.html #}
+{% macro s3_sink_common(s3, topicsDir, flushSize, rotateScheduleIntervalMs) %}
+{% set base = values.s3Archive %}
+    storage.class: io.confluent.connect.s3.storage.S3Storage
+    s3.bucket.name: "{{ system.env.CONNECT_S3_BUCKET_NAME }}"
+    s3.region: {{ system.env.CONNECT_S3_REGION | default(base.region, true) }}
+    topics.dir: "{{ topicsDir }}"
+    partitioner.class: io.confluent.connect.storage.partitioner.TimeBasedPartitioner
+    path.format: "{{ base.pathFormat }}"
+    partition.duration.ms: {{ base.partitionDurationMs }}
+    timestamp.extractor: Record
+    locale: en-US
+    timezone: UTC
+
+    # Objects are committed when flush.size records are reached or the wall clock rotation interval passes
+    flush.size: {{ flushSize }}
+    rotate.schedule.interval.ms: {{ rotateScheduleIntervalMs }}
+    s3.part.size: {{ base.partSize }}
+    s3.elastic.buffer.enable: true
+    s3.elastic.buffer.init.capacity: {{ base.elasticBufferInitCapacity }}
+
+    # Retries for S3 and network failures. Offsets are only committed after objects are written to S3.
+    s3.part.retries: {{ base.partRetries }}
+    s3.retry.backoff.ms: {{ base.retryBackoffMs }}
+    retry.backoff.ms: {{ base.taskRetryBackoffMs }}
+    consumer.override.max.poll.interval.ms: {{ base.maxPollIntervalMs }}
+
+    # Records that cannot be archived are reported to the dead letter queue topic
+    errors.tolerance: all
+    errors.log.enable: true
+    errors.log.include.messages: false
+    errors.deadletterqueue.topic.name: {{ s3.dlqTopicName }}
+    errors.deadletterqueue.topic.replication.factor: {{ base.dlqReplicationFactor }}
+    errors.deadletterqueue.context.headers.enable: true
+
+    {%+ if system.env.CONNECT_S3_SSE_ALGORITHM %}s3.ssea.name: {{ system.env.CONNECT_S3_SSE_ALGORITHM }}{% endif %}
+    {%+ if system.env.CONNECT_S3_SSE_KMS_KEY_ID %}s3.sse.kms.key.id: "{{ system.env.CONNECT_S3_SSE_KMS_KEY_ID }}"{% endif %}
+    {%+ if system.env.CONNECT_S3_ACL_CANNED %}s3.acl.canned: {{ system.env.CONNECT_S3_ACL_CANNED }}{% endif %}
+    {%+ if system.env.CONNECT_S3_STORE_URL %}store.url: "{{ system.env.CONNECT_S3_STORE_URL }}"{% endif %}
+    {%+ if system.env.CONNECT_S3_STORE_URL %}s3.path.style.access.enabled: true{% endif %}
+{% endmacro %}
+
+{#-------  Create S3 archive sink connector with env variable CONNECT_CREATE_S3_ARCHIVE = true ----------#}
 {% if system.env.CONNECT_CREATE_S3_ARCHIVE %}
 {% set s3 = values.s3Archive %}
 ---
@@ -110,43 +154,51 @@ spec:
     behavior.on.null.values: ignore
 
     # Destination: <bucket>/<environment>/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
-    storage.class: io.confluent.connect.s3.storage.S3Storage
-    s3.bucket.name: "{{ system.env.CONNECT_S3_BUCKET_NAME }}"
-    s3.region: {{ system.env.CONNECT_S3_REGION | default(s3.region, true) }}
-    topics.dir: "{{ system.env.CONNECT_S3_ENVIRONMENT | default(s3.environment, true) }}"
-    partitioner.class: io.confluent.connect.storage.partitioner.TimeBasedPartitioner
-    path.format: "{{ s3.pathFormat }}"
-    partition.duration.ms: {{ s3.partitionDurationMs }}
-    timestamp.extractor: Record
-    locale: en-US
-    timezone: UTC
+{{ s3_sink_common(s3,
+     system.env.CONNECT_S3_ENVIRONMENT | default(s3.environment, true),
+     system.env.CONNECT_S3_FLUSH_SIZE | default(s3.flushSize, true),
+     system.env.CONNECT_S3_ROTATE_INTERVAL_MS | default(s3.rotateScheduleIntervalMs, true)) }}
+  state: "RUNNING"
+{% endif %}
 
-    # Objects are committed when flush.size records are reached or the wall clock rotation interval passes
-    flush.size: {{ system.env.CONNECT_S3_FLUSH_SIZE | default(s3.flushSize, true) }}
-    rotate.schedule.interval.ms: {{ system.env.CONNECT_S3_ROTATE_INTERVAL_MS | default(s3.rotateScheduleIntervalMs, true) }}
-    s3.part.size: {{ s3.partSize }}
-    s3.elastic.buffer.enable: true
-    s3.elastic.buffer.init.capacity: {{ s3.elasticBufferInitCapacity }}
+{#-------  Create compact raw S3 archive sink connector with env variable CONNECT_CREATE_S3_RAW_ARCHIVE = true ----------#}
+{# Writes only the configured metadata fields (odeReceivedAt, originIp, asn1) of the raw encoded topics, see docs/S3_Archive.md #}
+{% if system.env.CONNECT_CREATE_S3_RAW_ARCHIVE %}
+{% set s3r = values.s3RawArchive %}
+---
+apiVersion: "kafka.jikkou.io/v1beta1"
+kind: "KafkaConnector"
+metadata:
+  name: sink.{{ s3r.connectorName }}
+  labels:
+    kafka.jikkou.io/connect-cluster: {{ values.clusterName }}
+spec:
+  connectorClass: {{ values.s3Archive.connectorClass }}
+  tasksMax: {{ s3r.tasksMax }}
+  config:
+    connector.class: {{ values.s3Archive.connectorClass }}
+    topics: "{{ system.env.CONNECT_S3_RAW_TOPICS | default(s3r.topics | join(','), true) }}"
 
-    # Retries for S3 and network failures. Offsets are only committed after objects are written to S3.
-    s3.part.retries: {{ s3.partRetries }}
-    s3.retry.backoff.ms: {{ s3.retryBackoffMs }}
-    retry.backoff.ms: {{ s3.taskRetryBackoffMs }}
-    consumer.override.max.poll.interval.ms: {{ s3.maxPollIntervalMs }}
+    # Each record is reduced to the configured fields of its metadata and written as one JSON line, e.g.
+    # {"odeReceivedAt":"2026-10-29T20:15:22.405Z","originIp":"10.0.0.1","asn1":"0381004003..."}
+    key.converter: org.apache.kafka.connect.converters.ByteArrayConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false
+    transforms: metadata,fields
+    transforms.metadata.type: org.apache.kafka.connect.transforms.ExtractField$Value
+    transforms.metadata.field: metadata
+    transforms.fields.type: org.apache.kafka.connect.transforms.ReplaceField$Value
+    transforms.fields.include: "{{ s3r.fields | join(',') }}"
+    format.class: io.confluent.connect.s3.format.json.JsonFormat
+    s3.compression.type: gzip
+    s3.compression.level: {{ s3r.compressionLevel }}
+    behavior.on.null.values: ignore
 
-    # Records that cannot be archived are reported to the dead letter queue topic
-    errors.tolerance: all
-    errors.log.enable: true
-    errors.log.include.messages: false
-    errors.deadletterqueue.topic.name: {{ s3.dlqTopicName }}
-    errors.deadletterqueue.topic.replication.factor: {{ s3.dlqReplicationFactor }}
-    errors.deadletterqueue.context.headers.enable: true
-
-    {%+ if system.env.CONNECT_S3_SSE_ALGORITHM %}s3.ssea.name: {{ system.env.CONNECT_S3_SSE_ALGORITHM }}{% endif %}
-    {%+ if system.env.CONNECT_S3_SSE_KMS_KEY_ID %}s3.sse.kms.key.id: "{{ system.env.CONNECT_S3_SSE_KMS_KEY_ID }}"{% endif %}
-    {%+ if system.env.CONNECT_S3_ACL_CANNED %}s3.acl.canned: {{ system.env.CONNECT_S3_ACL_CANNED }}{% endif %}
-    {%+ if system.env.CONNECT_S3_STORE_URL %}store.url: "{{ system.env.CONNECT_S3_STORE_URL }}"{% endif %}
-    {%+ if system.env.CONNECT_S3_STORE_URL %}s3.path.style.access.enabled: true{% endif %}
-
+    # Destination: <bucket>/<environment>/<pathPrefix>/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
+    # The separate prefix keeps these objects from colliding with the S3 archive objects of the same topics
+{{ s3_sink_common(s3r,
+     (system.env.CONNECT_S3_ENVIRONMENT | default(values.s3Archive.environment, true)) ~ '/' ~ s3r.pathPrefix,
+     s3r.flushSize,
+     s3r.rotateScheduleIntervalMs) }}
   state: "RUNNING"
 {% endif %}

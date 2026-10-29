@@ -514,3 +514,30 @@ s3Archive:
     - topic.DeduplicatedProcessedSpat
     # jpo-mec-deposit
     - topic.MecDepositMetrics
+
+# Compact raw S3 archive connector (docs/S3_Archive.md), created when CONNECT_CREATE_S3_RAW_ARCHIVE=true.
+# Writes only the listed metadata fields of each raw encoded record as gzip compressed JSON lines. The bucket,
+# region, environment, partitioning, retry and encryption settings are shared with s3Archive.
+s3RawArchive:
+  connectorName: S3RawArchive       # Created as sink.<connectorName>, consumer group connect-sink.<connectorName>
+  tasksMax: 1
+  pathPrefix: compact               # Objects are written under <environment>/<pathPrefix>/<topic>/
+  fields:                           # Fields kept from each record's metadata
+    - odeReceivedAt
+    - originIp
+    - asn1
+  compressionLevel: 9               # gzip level, 9 is the highest compression
+  flushSize: 10000                  # max records per S3 object
+  rotateScheduleIntervalMs: 120000  # max time before an open object is committed
+  dlqTopicName: dlq.S3RawArchive
+  topics:                           # env var: CONNECT_S3_RAW_TOPICS
+    - topic.OdeRawEncodedBSMJson
+    - topic.OdeRawEncodedTIMJson
+    - topic.OdeRawEncodedMAPJson
+    - topic.OdeRawEncodedSPATJson
+    - topic.OdeRawEncodedSRMJson
+    - topic.OdeRawEncodedSSMJson
+    - topic.OdeRawEncodedPSMJson
+    - topic.OdeRawEncodedSDSMJson
+    - topic.OdeRawEncodedRTCMJson
+    - topic.OdeRawEncodedRSMJson
