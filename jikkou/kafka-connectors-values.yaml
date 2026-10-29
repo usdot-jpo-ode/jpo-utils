@@ -430,3 +430,87 @@ apps:
   other:
     name: other
     connectors:
+
+
+#--------------------------------------------------------------------------------------
+# S3 archive sink connector
+#
+# Created when env var: CONNECT_CREATE_S3_ARCHIVE = true
+# Continuously archives the raw values of the listed Kafka topics to Amazon S3 as gzip
+# compressed, newline delimited objects. See docs/S3_Archive.md for the topic inventory,
+# deployment, monitoring and recovery instructions.
+#
+# The topic list can be replaced without rebuilding any image by:
+#   - setting env var CONNECT_S3_TOPICS to a comma separated list of topics, or
+#   - mounting a custom copy of this file with CONNECT_KAFKA_CONNECTORS_VALUES_FILE
+# and re-running the kafka-connect-setup service.
+#
+# Topics for applications that are not deployed can be removed from the list. Topics that
+# do not exist are not consumed until they are created.
+#
+# Ref: https://docs.confluent.io/kafka-connectors/s3-sink/current/configuration_options.html
+#--------------------------------------------------------------------------------------
+s3Archive:
+  connectorName: S3Archive  # Created as sink.<connectorName>, consumer group connect-sink.<connectorName>
+  connectorClass: "io.confluent.connect.s3.S3SinkConnector"
+  tasksMax: 1                       # env var: CONNECT_S3_TASKS_MAX
+  region: us-east-1                 # env var: CONNECT_S3_REGION
+  environment: local                # env var: CONNECT_S3_ENVIRONMENT, top level S3 prefix
+  pathFormat: "'year'=YYYY/'month'=MM/'day'=dd/'hour'=HH"
+  partitionDurationMs: 3600000
+  fileExtension: .json
+  compressionType: gzip
+  flushSize: 10000                  # env var: CONNECT_S3_FLUSH_SIZE, max records per S3 object
+  rotateScheduleIntervalMs: 120000  # env var: CONNECT_S3_ROTATE_INTERVAL_MS, max time before an open object is committed
+  partSize: 5242880                 # 5 MB S3 multipart upload part size (minimum allowed by S3)
+  elasticBufferInitCapacity: 131072 # 128 KB initial buffer per open object, grows up to partSize
+  partRetries: 5                    # S3 request retries before the write is retried by the connector task
+  retryBackoffMs: 1000              # Initial S3 request retry backoff, doubles on each retry
+  taskRetryBackoffMs: 5000          # Backoff before the connector task retries a failed S3 write
+  maxPollIntervalMs: 900000         # Consumer max.poll.interval.ms, allows S3 retries without consumer group rebalances
+  dlqTopicName: dlq.S3Archive
+  dlqReplicationFactor: 1
+  topics:
+    # ODE decoded JSON
+    - topic.OdeBsmJson
+    - topic.OdeTimJson
+    - topic.OdeMapJson
+    - topic.OdeSpatJson
+    - topic.OdeSrmJson
+    - topic.OdeSsmJson
+    - topic.OdePsmJson
+    - topic.OdeSdsmJson
+    - topic.OdeRtcmJson
+    - topic.OdeRsmJson
+    - topic.OdeDriverAlertJson
+    - topic.OdeTimJsonTMCFiltered
+    - topic.OdeTIMCertExpirationTimeJson
+    # ODE raw encoded JSON
+    - topic.OdeRawEncodedBSMJson
+    - topic.OdeRawEncodedTIMJson
+    - topic.OdeRawEncodedMAPJson
+    - topic.OdeRawEncodedSPATJson
+    - topic.OdeRawEncodedSRMJson
+    - topic.OdeRawEncodedSSMJson
+    - topic.OdeRawEncodedPSMJson
+    - topic.OdeRawEncodedSDSMJson
+    - topic.OdeRawEncodedRTCMJson
+    - topic.OdeRawEncodedRSMJson
+    # GeoJSON Converter processed messages
+    - topic.ProcessedBsm
+    - topic.ProcessedMap
+    - topic.ProcessedMapWKT
+    - topic.ProcessedSpat
+    - topic.ProcessedSrm
+    - topic.ProcessedSsm
+    - topic.ProcessedRtcm
+    # Deduplicator
+    - topic.DeduplicatedOdeBsmJson
+    - topic.DeduplicatedOdeTimJson
+    - topic.DeduplicatedOdeMapJson
+    - topic.DeduplicatedProcessedBsm
+    - topic.DeduplicatedProcessedMap
+    - topic.DeduplicatedProcessedMapWKT
+    - topic.DeduplicatedProcessedSpat
+    # jpo-mec-deposit
+    - topic.MecDepositMetrics
