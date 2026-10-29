@@ -235,6 +235,10 @@ The archived topics are listed under `s3Archive.topics` in [kafka-connectors-val
 | `CONNECT_S3_ACL_CANNED` | Optional canned ACL for created objects, e.g. `bucket-owner-full-control` |
 | `CONNECT_S3_STORE_URL` | Local S3 emulator endpoint only, leave blank for Amazon S3 |
 | `CONNECT_S3_LOCAL_ACCESS_KEY_ID`, `CONNECT_S3_LOCAL_SECRET_ACCESS_KEY` | Local S3 emulator credentials only, leave blank for Amazon S3 |
+| `CONNECT_CREATE_S3_RAW_ARCHIVE` | Whether to create the compact raw S3 archive connector `sink.S3RawArchive` (default: `false`). It uses the bucket, environment and encryption settings above. |
+| `CONNECT_S3_RAW_TOPICS` | Optional comma separated list of topics that replaces the compact raw archive's default list of raw encoded topics |
+
+The optional compact raw archive connector `sink.S3RawArchive` writes only the `odeReceivedAt`, `originIp` and `asn1` metadata fields of each `topic.OdeRawEncoded*Json` record, as gzip compressed JSON lines under `<bucket>/<CONNECT_S3_ENVIRONMENT>/compact/<topic>/...`. These fields are enough to replay the raw messages through the ODE, at about 30% less storage than the full records.
 
 To try the connector locally with the [S3Mock](https://github.com/adobe/S3Mock) emulator:
 

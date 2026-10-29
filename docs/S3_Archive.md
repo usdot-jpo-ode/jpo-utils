@@ -18,6 +18,7 @@ The S3 archive connector continuously copies processed ODE, GeoJSON Converter, D
 - [12. Troubleshooting](#12-troubleshooting)
 - [13. Test Results](#13-test-results)
 - [14. Upgrading the Connector](#14-upgrading-the-connector)
+- [15. Compact Raw Archive](#15-compact-raw-archive)
 
 ## 1. Connector Selection
 
@@ -59,6 +60,7 @@ ODE / GeoJSON Converter / Deduplicator / jpo-mec-deposit
 - **Time partitioning.** The prefix comes from the Kafka record timestamp in UTC, which is the time the record was produced to Kafka (ingestion time), not the event time inside the message.
 - **Traceability to Kafka.** Each object key contains the source topic, the Kafka partition and the offset of the first record in the object. Line `n` (starting at 0) of an object holds the record at offset `startOffset + n`. This holds for the archived topics, which are non-compacted and non-transactional, with null value records skipped. See [Data Retrieval](#11-data-retrieval).
 - **Offsets.** Kafka offsets are only committed after the objects that hold those records are written to S3. They are stored in the standard Kafka consumer group of the connector.
+- **Compact raw archive.** An optional second connector, `sink.S3RawArchive`, keeps only the `odeReceivedAt`, `originIp` and `asn1` fields of the raw encoded topics, for replaying raw messages at lower storage cost. See [Compact Raw Archive](#15-compact-raw-archive).
 
 [Back to top](#s3-archive-kafka-connector)
 
@@ -324,16 +326,18 @@ Notes:
 
 The Grafana dashboard **Kafka Connect S3 Archive** ([kafka-connect-s3-archive.json](../monitoring/grafana/dashboards/kafka-connect-s3-archive.json)) shows these metrics. It is provisioned automatically with the `monitoring_full` profile. The Prometheus job `kafka-connect` is configured in [prometheus.yml](../monitoring/prometheus/prometheus.yml). For a Kafka Connect worker on another host, change the target to `<host>:9404`.
 
-The JMX exporter rules ([jmx-exporter.yml](../kafka-connect/jmx-exporter.yml)) export connector status and the per connector task counts for every connector. Task level metrics (task status, throughput, errors) are only exported for `sink.S3Archive`. With the default `CONNECT_TASKS_MAX=10`, the Mongo sinks run more than 800 tasks. Reading every task MBean made a scrape take 15 to 20 seconds on a one CPU worker, which is longer than the 10 second Prometheus scrape timeout. With the task metrics limited to the archive connector, a scrape takes about one second. If the connector is renamed (`s3Archive.connectorName`), update the task level `includeObjectNames` entries in that file and rebuild the image. If Prometheus shows the `kafka-connect` target as down with `context deadline exceeded`, and the worker logs `The Prometheus metrics HTTPServer caught an Exception while trying to send the metrics response`, the scrape is taking longer than the timeout.
+The JMX exporter rules ([jmx-exporter.yml](../kafka-connect/jmx-exporter.yml)) export connector status and the per connector task counts for every connector. Task level metrics (task status, throughput, errors) are only exported for `sink.S3Archive` and `sink.S3RawArchive`. With the default `CONNECT_TASKS_MAX=10`, the Mongo sinks run more than 800 tasks. Reading every task MBean made a scrape take 15 to 20 seconds on a one CPU worker, which is longer than the 10 second Prometheus scrape timeout. With the task metrics limited to the archive connectors, a scrape takes about one second. If a connector is renamed (`s3Archive.connectorName` or `s3RawArchive.connectorName`), update the task level `includeObjectNames` entries in that file and rebuild the image. If Prometheus shows the `kafka-connect` target as down with `context deadline exceeded`, and the worker logs `The Prometheus metrics HTTPServer caught an Exception while trying to send the metrics response`, the scrape is taking longer than the timeout.
 
 ### Recommended alerts
 
+The alerts cover both archive connectors. If only `sink.S3Archive` is deployed, replace `sink.S3(Raw)?Archive` with `sink.S3Archive`, otherwise the missing connector alert fires for `sink.S3RawArchive`.
+
 | Alert | PromQL | For |
 |---|---|---|
-| S3 archive task failed | `sum(kafka_connect_worker_connector_connector_failed_task_count{connector="sink.S3Archive"}) > 0` | 1m |
-| S3 archive connector missing or not running | `absent(kafka_connect_connector_status{connector="sink.S3Archive",status="running"})` | 5m |
-| Archive latency above target | `max(kafka_consumergroup_group_max_lag_seconds{group="connect-sink.S3Archive"}) > 300` | 5m |
-| Records sent to the S3 archive DLQ | `sum(increase(kafka_connect_task_error_metrics_deadletterqueue_produce_requests{connector="sink.S3Archive"}[15m])) > 0` | 0m |
+| S3 archive task failed | `sum by (connector) (kafka_connect_worker_connector_connector_failed_task_count{connector=~"sink.S3(Raw)?Archive"}) > 0` | 1m |
+| S3 archive connector missing or not running | `absent(kafka_connect_connector_status{connector="sink.S3Archive",status="running"})`, and the same for `sink.S3RawArchive` | 5m |
+| Archive latency above target | `max by (group) (kafka_consumergroup_group_max_lag_seconds{group=~"connect-sink.S3(Raw)?Archive"}) > 300` | 5m |
+| Records sent to the S3 archive DLQ | `sum by (connector) (increase(kafka_connect_task_error_metrics_deadletterqueue_produce_requests{connector=~"sink.S3(Raw)?Archive"}[15m])) > 0` | 0m |
 
 ### Logs
 
@@ -497,5 +501,126 @@ Before upgrading the connector:
 
 1. Check whether the upstream issue is fixed, comparing `S3SinkTask.preCommit` and the `RetriableException` handling in `S3SinkTask.put` with `12.1.13`.
 2. Re-run the outage tests in [Test Results](#13-test-results) with the new version: stop the `s3-local` container while producing, wait for the task to fail, start it, restart the task, and verify that every produced record is in S3.
+
+[Back to top](#s3-archive-kafka-connector)
+
+## 15. Compact Raw Archive
+
+The optional `sink.S3RawArchive` connector archives the raw encoded ODE topics with only the three values needed to replay a raw message through the ODE:
+
+- `odeReceivedAt`: the time the ODE received the message.
+- `originIp`: the IP address the UDP packet came from.
+- `asn1`: the hex of the message as received:
+  - For UDP, this is the full packet, including any WSMP and IEEE 1609.2 headers.
+  - For OBU log file uploads, it is the record payload with the WSMP header removed.
+
+It runs alongside `sink.S3Archive`, which keeps the full record values, and does not change it.
+
+### Layout and format
+
+```text
+s3://<bucket>/<environment>/compact/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
+```
+
+Each object is a gzip (level 9) file with one JSON object per line:
+
+```json
+{"odeReceivedAt":"2026-10-29T22:07:29.253Z","originIp":"10.10.0.3","asn1":"0300208095038100400380380014354..."}
+```
+
+- **Key order:** the order of the keys in a line is not fixed.
+- **No `originIp` key:** records imported from OBU log files have no `originIp`, so the key is left out of their lines.
+- **Offsets:** line `n` of an object holds the record at offset `startOffset + n`, as in the full archive.
+- **Separate prefix:** the `compact` prefix keeps these objects apart from the full archive objects of the same topics, which have the same object names.
+
+### How it works
+
+The connector reads the records with the `JsonConverter` and uses two built-in Kafka transforms, so no custom code is involved:
+
+1. `ExtractField$Value` (`field=metadata`) replaces the value with its `metadata` object.
+2. `ReplaceField$Value` (`include=odeReceivedAt,originIp,asn1`) keeps only those fields.
+
+`JsonFormat` then writes each result as one line. The bucket, region, environment, partitioning, flush, retry, error handling and encryption settings are shared with `sink.S3Archive` through the `s3_sink_common` macro in [kafka-connectors-template.jinja](../jikkou/kafka-connectors-template.jinja). The connector has its own consumer group `connect-sink.S3RawArchive` and its own dead letter queue `dlq.S3RawArchive`, with 7 day retention.
+
+Parsing JSON uses more CPU than the full archive's byte-for-byte copy. Include both connectors when sizing the Kafka Connect worker.
+
+### Configuration
+
+| Setting | Default | Description |
+|---|---|---|
+| `CONNECT_CREATE_S3_RAW_ARCHIVE` | `false` | Create or update `sink.S3RawArchive`. Uses `CONNECT_S3_BUCKET_NAME`, `CONNECT_S3_REGION`, `CONNECT_S3_ENVIRONMENT`, the SSE, ACL and store settings of [Configuration](#4-configuration). |
+| `CONNECT_S3_RAW_TOPICS` | blank | Comma separated topic list that replaces `s3RawArchive.topics`. |
+| `s3RawArchive.topics` | the 10 `topic.OdeRawEncoded*Json` topics | Topics to archive. |
+| `s3RawArchive.fields` | `odeReceivedAt`, `originIp`, `asn1` | Metadata fields kept in each line. |
+| `s3RawArchive.pathPrefix` | `compact` | Prefix under the environment. |
+| `s3RawArchive.compressionLevel` | `9` | gzip level. |
+| `s3RawArchive.flushSize`, `rotateScheduleIntervalMs` | `10000`, `120000` | Object size and age limits. |
+
+The IAM policy, encryption, lifecycle rules, monitoring and operations of the previous sections apply in the same way. Use the connector name `sink.S3RawArchive` with the REST API. The Grafana dashboard's connector selector lists both connectors.
+
+### Storage size
+
+The table compares the gzip compressed size per record with the full archive. The records are real ODE records, created by sending the signed BSM, MAP and TIM messages of the Commsignia sample logs in the jpo-ode `data` folder over UDP to the ODE.
+
+| Message | Full record (`sink.S3Archive`, gzip 6) | Compact (`sink.S3RawArchive`, gzip 9) | Compact / full |
+|---|---|---|---|
+| Signed BSM (511 records) | 137.6 B | 97.2 B | 71% |
+| Signed MAP (103 records) | 168.8 B | 114.9 B | 68% |
+| Signed TIM (279 records) | 138.5 B | 99.7 B | 72% |
+
+- **Signed messages:** most of what remains after compression is the 1609.2 signature and certificate data, which does not compress.
+- **Binary encoding:** a custom binary encoding (8 byte time, 4 byte IP, 2 byte length, then raw bytes) would be about another 15 to 19% smaller. It would need custom connector code and a reader, so JSON lines were chosen.
+- **gzip level:** level 9 is about 1% smaller than the default level 6.
+- **Repeated test data:** test data that repeats the same message compresses far better. Do not use it to estimate storage.
+
+### Retrieval and replay
+
+```bash
+# Download one hour of BSMs
+aws s3 cp s3://<bucket>/<environment>/compact/topic.OdeRawEncodedBSMJson/year=2026/month=10/day=29/hour=22/ ./raw --recursive
+
+# Read the records
+zcat ./raw/*.json.gz | jq -c '{odeReceivedAt, originIp}'
+
+# Replay each message as a UDP packet to the ODE receiver for its type (bash, with xxd)
+zcat ./raw/*.json.gz | jq -r '.asn1' | while read -r hex; do
+  echo "$hex" | xxd -r -p > /dev/udp/<ode-host>/46800
+done
+```
+
+**ODE UDP ports** (defaults):
+
+| Type | Port |
+|---|---|
+| BSM | `46800` |
+| TIM | `47900` |
+| MAP | `44920` |
+| SPaT | `44910` |
+| SRM | `44930` |
+| SSM | `44900` |
+| PSM | `44940` |
+| SDSM | `44950` |
+| RTCM | `44960` |
+| RSM | `44970` |
+| Generic receiver | `44990` |
+
+**What changes on replay:** the replayed records get a new `odeReceivedAt` and the replaying host as `originIp`. Use the archived values to correlate them with the original records.
+
+**OBU log file records:** these were not replayed in testing. Their `asn1` keeps the 1609.2 header but not the WSMP header, and their log metadata (location and generation time) is not in the compact archive.
+
+### Test results
+
+These tests were run on 2026-10-29 against the jpo-ode compose stack with jpo-utils, with both S3 connectors enabled and a sustained synthetic UDP load on the raw encoded topics.
+
+| Test | Result |
+|---|---|
+| Template | The rendered `sink.S3Archive` configuration and all MongoDB connectors are identical to the previous template. `sink.S3RawArchive` is only rendered with `CONNECT_CREATE_S3_RAW_ARCHIVE=true`. |
+| Deployment | `kafka-setup` created `dlq.S3RawArchive`. `kafka-connect-setup` created `sink.S3RawArchive`. All 85 connectors `RUNNING`. |
+| Content | 1.08 million records on 8 topics archived from offset 486000 in 149 objects. No gaps, overlaps or invalid lines, and every line holds only the three fields. All checked records matched `metadata` on Kafka: 2,000 consecutive BSM records, the 286 records of an OBU log upload, and random samples on each topic. |
+| OBU log upload | The 279 records of `rxMsg_commsignia_tim.gz`, uploaded with `POST /upload/obulog`, were archived without `originIp`. |
+| Replay | An archived signed Commsignia BSM `asn1` was sent as a UDP packet to port 46800. The ODE produced it to `topic.OdeRawEncodedBSMJson` and decoded it to `topic.OdeBsmJson`. |
+| Offset reset | `stop`, `PATCH offsets` and `resume` moved the connector to a chosen offset, as described in [Recovery and Replay](#10-recovery-and-replay). |
+| Health | Both DLQs empty, no connector errors, task metrics exported for both connectors, Prometheus scrape under 3 seconds. |
+| Capacity | With both connectors, the 83 MongoDB sinks and the synthetic load on about 40 archived topics, the one CPU Kafka Connect worker was at its CPU limit and both archive connectors fell behind while working through backlogs. Size the worker CPU for both connectors at production rates. |
 
 [Back to top](#s3-archive-kafka-connector)
