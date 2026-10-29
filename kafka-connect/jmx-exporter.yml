@@ -1,10 +1,20 @@
 # Prometheus JMX exporter rules for the Kafka Connect worker.
 # Exposes worker, connector, task, sink task and task error metrics on :9404/metrics.
 # Ref: https://kafka.apache.org/documentation/#connect_monitoring
+#
+# Worker and connector level metrics are exported for every connector. Task level metrics are only exported for
+# the S3 archive connector. With the default CONNECT_TASKS_MAX=10 the Mongo sinks run more than 800 tasks, and
+# reading every task MBean made a scrape take longer than the Prometheus scrape timeout. To export task metrics
+# for another connector, add its name to the task level includeObjectNames entries. If the S3 archive connector
+# is renamed (s3Archive.connectorName), update those entries to match.
 lowercaseOutputName: true
 lowercaseOutputLabelNames: true
 includeObjectNames:
-  - "kafka.connect:*"
+  - "kafka.connect:type=connect-worker-metrics,*"
+  - "kafka.connect:type=connector-metrics,*"
+  - "kafka.connect:type=connector-task-metrics,connector=sink.S3Archive,*"
+  - "kafka.connect:type=sink-task-metrics,connector=sink.S3Archive,*"
+  - "kafka.connect:type=task-error-metrics,connector=sink.S3Archive,*"
 rules:
   # Connector and task state as labeled gauges (value is always 1), e.g. status="running" or status="failed"
   - pattern: 'kafka.connect<type=connector-metrics, connector=([^,]+)><>status: ([a-z-]+)'
@@ -35,13 +45,26 @@ rules:
     name: kafka_connect_worker_$1
     type: GAUGE
 
-  # Sink task, connector task and task error metrics, e.g.
-  #   kafka_connect_sink_task_metrics_sink_record_read_total
+  # Task level metrics used by the S3 archive dashboard and alerts, e.g.
+  #   kafka_connect_sink_task_metrics_sink_record_read
   #   kafka_connect_connector_task_metrics_offset_commit_failure_percentage
   #   kafka_connect_task_error_metrics_deadletterqueue_produce_requests
-  - pattern: 'kafka.connect<type=(sink-task-metrics|connector-task-metrics|task-error-metrics), connector=([^,]+), task=([^,]+)><>([a-z-]+)'
-    name: kafka_connect_$1_$4
+  # The trailing ":" anchors the attribute name, so sink-record-active-count does not also match its -avg and -max.
+  - pattern: 'kafka.connect<type=sink-task-metrics, connector=([^,]+), task=([^,]+)><>(sink-record-read-total|sink-record-send-total|sink-record-active-count):'
+    name: kafka_connect_sink_task_metrics_$3
     type: GAUGE
     labels:
-      connector: "$2"
-      task: "$3"
+      connector: "$1"
+      task: "$2"
+  - pattern: 'kafka.connect<type=connector-task-metrics, connector=([^,]+), task=([^,]+)><>(offset-commit-failure-percentage):'
+    name: kafka_connect_connector_task_metrics_$3
+    type: GAUGE
+    labels:
+      connector: "$1"
+      task: "$2"
+  - pattern: 'kafka.connect<type=task-error-metrics, connector=([^,]+), task=([^,]+)><>(total-record-errors|total-record-failures|deadletterqueue-produce-requests|deadletterqueue-produce-failures):'
+    name: kafka_connect_task_error_metrics_$3
+    type: GAUGE
+    labels:
+      connector: "$1"
+      task: "$2"

@@ -324,6 +324,8 @@ Notes:
 
 The Grafana dashboard **Kafka Connect S3 Archive** ([kafka-connect-s3-archive.json](../monitoring/grafana/dashboards/kafka-connect-s3-archive.json)) shows these metrics. It is provisioned automatically with the `monitoring_full` profile. The Prometheus job `kafka-connect` is configured in [prometheus.yml](../monitoring/prometheus/prometheus.yml). For a Kafka Connect worker on another host, change the target to `<host>:9404`.
 
+The JMX exporter rules ([jmx-exporter.yml](../kafka-connect/jmx-exporter.yml)) export connector status and the per connector task counts for every connector. Task level metrics (task status, throughput, errors) are only exported for `sink.S3Archive`. With the default `CONNECT_TASKS_MAX=10`, the Mongo sinks run more than 800 tasks. Reading every task MBean made a scrape take 15 to 20 seconds on a one CPU worker, which is longer than the 10 second Prometheus scrape timeout. With the task metrics limited to the archive connector, a scrape takes about one second. If the connector is renamed (`s3Archive.connectorName`), update the task level `includeObjectNames` entries in that file and rebuild the image. If Prometheus shows the `kafka-connect` target as down with `context deadline exceeded`, and the worker logs `The Prometheus metrics HTTPServer caught an Exception while trying to send the metrics response`, the scrape is taking longer than the timeout.
+
 ### Recommended alerts
 
 | Alert | PromQL | For |
