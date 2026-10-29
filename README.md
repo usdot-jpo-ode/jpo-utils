@@ -22,6 +22,7 @@ The JPO ITS utilities repository serves as a central location for deploying open
     - [Configuration](#configuration)
     - [Configure Kafka Connector Creation](#configure-kafka-connector-creation)
     - [Quick Run](#quick-run-2)
+    - [S3 Archive Kafka Connector](#s3-archive-kafka-connector)
   - [5. Monitoring Stack](#5-monitoring-stack)
     - [Configuration](#configuration-1)
     - [Quick Run](#quick-run-3)
@@ -209,6 +210,51 @@ The following environment variables can be used to configure Kafka Connectors:
    3. Click `OdeBsmJson`, and now you should see your message!
 8. Feel free to test this with other topics or by producing to these topics using the [ODE](https://github.com/usdot-jpo-ode/jpo-ode)
 
+### S3 Archive Kafka Connector
+
+The Kafka Connect image also includes the [Confluent Amazon S3 Sink Connector](https://docs.confluent.io/kafka-connectors/s3-sink/current/overview.html) (version `12.1.13`, [Confluent Community License](https://www.confluent.io/confluent-community-license)). When enabled, the `kafka-connect-setup` service creates a `sink.S3Archive` connector that continuously archives the raw values of the configured ODE, GeoJSON Converter, Deduplicator and jpo-mec-deposit topics to Amazon S3 as gzip compressed, newline delimited objects:
+
+```text
+<bucket>/<CONNECT_S3_ENVIRONMENT>/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
+```
+
+The archived topics are listed under `s3Archive.topics` in [kafka-connectors-values.yaml](jikkou/kafka-connectors-values.yaml) and can be overridden with `CONNECT_S3_TOPICS` without rebuilding any image. AWS credentials are never stored in the connector configuration, the connector uses the AWS default credential provider chain (IAM role) of the `kafka-connect` container.
+
+| Environment Variable | Description |
+|---|---|
+| `CONNECT_CREATE_S3_ARCHIVE` | Whether to create the S3 archive connector (default: `false`) |
+| `CONNECT_S3_BUCKET_NAME` | Destination S3 bucket, required when the S3 archive connector is enabled |
+| `CONNECT_S3_REGION` | AWS region of the bucket (default: `us-east-1`) |
+| `CONNECT_S3_ENVIRONMENT` | Top level S3 prefix, e.g. the deployment environment name |
+| `CONNECT_S3_TOPICS` | Optional comma separated list of topics that replaces the default topic list |
+| `CONNECT_S3_TASKS_MAX` | Optional number of connector tasks (default: `1`) |
+| `CONNECT_S3_FLUSH_SIZE` | Optional maximum records per S3 object (default: `10000`) |
+| `CONNECT_S3_ROTATE_INTERVAL_MS` | Optional maximum time before an open S3 object is committed (default: `120000`) |
+| `CONNECT_S3_SSE_ALGORITHM` | Optional server side encryption, `AES256` or `aws:kms` |
+| `CONNECT_S3_SSE_KMS_KEY_ID` | Optional KMS key used with `aws:kms` encryption |
+| `CONNECT_S3_ACL_CANNED` | Optional canned ACL for created objects, e.g. `bucket-owner-full-control` |
+| `CONNECT_S3_STORE_URL` | Local S3 emulator endpoint only, leave blank for Amazon S3 |
+| `CONNECT_S3_LOCAL_ACCESS_KEY_ID`, `CONNECT_S3_LOCAL_SECRET_ACCESS_KEY` | Local S3 emulator credentials only, leave blank for Amazon S3 |
+
+To try the connector locally with the [S3Mock](https://github.com/adobe/S3Mock) emulator:
+
+1. Complete the Kafka Connect quick run above.
+2. In the `.env` file, set `COMPOSE_PROFILES` to `kafka_connect_standalone,kafka_setup,s3_local` and set:
+
+   ```bash
+   CONNECT_CREATE_S3_ARCHIVE=true
+   CONNECT_S3_BUCKET_NAME=jpo-archive-local
+   CONNECT_S3_ENVIRONMENT=local
+   CONNECT_S3_STORE_URL=http://s3-local:9090
+   CONNECT_S3_LOCAL_ACCESS_KEY_ID=local
+   CONNECT_S3_LOCAL_SECRET_ACCESS_KEY=local
+   ```
+
+3. Run `docker compose up -d --build`, then produce a message to `topic.OdeBsmJson`.
+4. After the rotation interval, list the archived objects: `curl "http://localhost:9000/jpo-archive-local?list-type=2&prefix=local/"`
+
+See [docs/S3_Archive.md](docs/S3_Archive.md) for the topic inventory, AWS deployment, IAM, encryption, lifecycle, monitoring, recovery, replay and data retrieval instructions.
+
 [Back to top](#toc)
 
 ## 5. Monitoring Stack
@@ -250,6 +296,7 @@ The following environment variables can be used to configure the monitoring stac
    - Node Exporter: `http://localhost:9100/metrics`
    - Kafka Lag Exporter: `http://localhost:8000/metrics`
    - MongoDB Exporter: `http://localhost:9216/metrics`
+   - Kafka Connect JMX Exporter: `http://localhost:9404/metrics`
 
 ### Scrape Configurations
 
@@ -261,6 +308,7 @@ The following scrape configurations are available:
 - `node_exporter` - scrapes the Node Exporter metrics
 - `kafka_exporter` - scrapes the Kafka Lag Exporter metrics
 - `mongodb_exporter` - scrapes the MongoDB Exporter metrics
+- `kafka-connect` - scrapes the Kafka Connect worker, connector and task metrics from the JMX exporter in the `kafka-connect` service
 
 [Back to top](#toc)
 
