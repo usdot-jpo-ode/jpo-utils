@@ -166,6 +166,12 @@ Set the `COMPOSE_PROFILES` environmental variable as follows:
   3. `kafka` service from [docker-compose-kafka](docker-compose-kafka.yml)
   4. `mongo` and `mongo-setup` services from [docker-compose-mongo](docker-compose-mongo.yml)
 
+### Image maintenance
+
+The Kafka Connect image uses Confluent Platform 8.4.0, with MongoDB Kafka Connector 1.13.0 and Confluent Connect Transforms 1.4.7. See the [Confluent support matrix](https://docs.confluent.io/platform/current/installation/versions-interoperability.html) before upgrading the base image. Base image references use version tags for readability and multi-platform SHA-256 digests to select immutable images; update both when upgrading.
+
+The base image still contains a vulnerable `ca-certificates` package ([CVE-2026-114406](https://access.redhat.com/security/vulnerabilities/RHSB-2026-012)) and has no package manager. The Dockerfile updates that package using a UBI 9 build stage, then copies the certificate files and updated RPM metadata into the runtime image. The package manager remains in the build stage. Remove this workaround when the Connect base image includes the fixed CA package.
+
 ### Configure Kafka Connector Creation
 
 The Kafka connectors created by the `kafka-connect-setup` service are configured in the [kafka-connectors-values.yaml](jikkou/kafka-connectors-values.yaml) file.  The connectors in that file are organized by the application, and given parameters to define the Kafka -> MongoDB sync connector:
