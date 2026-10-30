@@ -23,7 +23,9 @@ RUN set -eu; dnf -y --installroot=/rootfs --releasever=9 \
         fi; \
     done < /ca-certificates.files \
     && test ! -s var/lib/rpm/rpmdb.sqlite-wal \
-    && cp -a --parents var/lib/rpm/rpmdb.sqlite /updated/
+    && cp -a --parents var/lib/rpm/rpmdb.sqlite /updated/ \
+    && test -s /updated/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem \
+    && test -s /updated/etc/pki/ca-trust/extracted/java/cacerts
 
 FROM connect-base
 USER root
