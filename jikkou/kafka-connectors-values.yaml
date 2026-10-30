@@ -440,6 +440,9 @@ apps:
 # compressed, newline delimited objects. See docs/S3_Archive.md for the topic inventory,
 # deployment, monitoring and recovery instructions.
 #
+# The Conflict Monitor topics in conflictMonitorTopics are added with env var
+# CONNECT_S3_ARCHIVE_CONFLICTMONITOR = true.
+#
 # The topic list can be replaced without rebuilding any image by:
 #   - setting env var CONNECT_S3_TOPICS to a comma separated list of topics, or
 #   - mounting a custom copy of this file with CONNECT_KAFKA_CONNECTORS_VALUES_FILE
@@ -485,6 +488,12 @@ s3Archive:
     - topic.OdeDriverAlertJson
     - topic.OdeTimJsonTMCFiltered
     - topic.OdeTIMCertExpirationTimeJson
+    # ODE SDW depositor input (TIMs sent to the SDX)
+    - topic.SDWDepositorInput
+    # PPM (jpo-cvdp) privacy filtered output
+    - topic.FilteredOdeBsmJson
+    - topic.FilteredOdeTimJson
+    - topic.FilteredOdeSpatJson
     # ODE raw encoded JSON
     - topic.OdeRawEncodedBSMJson
     - topic.OdeRawEncodedTIMJson
@@ -514,6 +523,76 @@ s3Archive:
     - topic.DeduplicatedProcessedSpat
     # jpo-mec-deposit
     - topic.MecDepositMetrics
+
+  # Conflict Monitor events, assessments, notifications and metrics, appended to topics when
+  # CONNECT_S3_ARCHIVE_CONFLICTMONITOR=true (ignored when CONNECT_S3_TOPICS is set).
+  # Internal repartition, join, config and state topics are not archived.
+  conflictMonitorTopics:
+    # Stream topics
+    - topic.CmAppHealthNotifications
+    - topic.CmMapBroadcastRateEvents
+    - topic.CmMapMinimumDataEvents
+    - topic.CmSpatBroadcastRateEvents
+    - topic.CmSpatMinimumDataEvents
+    - topic.CmBsmEvents
+    - topic.CmConnectionOfTravelEvent
+    - topic.CmLaneDirectionOfTravelEvent
+    - topic.CmStopLinePassageEvent
+    - topic.CmStopLineStopEvent
+    - topic.CmSpatTimeChangeDetailsEvent
+    - topic.CmSignalGroupAlignmentEvents
+    - topic.CmIntersectionReferenceAlignmentEvents
+    - topic.CmSignalStateConflictEvents
+    - topic.CmTimestampDeltaEvent
+    - topic.CmSpatTransitionEvent
+    - topic.CmBsmMessageCountProgressionEvents
+    - topic.CmMapMessageCountProgressionEvents
+    - topic.CmSpatMessageCountProgressionEvents
+    - topic.CmRtcmMessageCountProgressionEventAggregation
+    - topic.CmEventStateProgressionEvent
+    - topic.CmRevocableEnabledLaneAlignmentEvent
+    - topic.CmSpatMinimumDataEventAggregation
+    - topic.CmMapMinimumDataEventAggregation
+    - topic.CmRtcmMinimumDataEventAggregation
+    - topic.CmIntersectionReferenceAlignmentEventAggregation
+    - topic.CmSignalGroupAlignmentEventAggregation
+    - topic.CmSignalStateConflictEventAggregation
+    - topic.CmSpatTimeChangeDetailsEventAggregation
+    - topic.CmEventStateProgressionEventAggregation
+    - topic.CmBsmMessageCountProgressionEventAggregation
+    - topic.CmMapMessageCountProgressionEventAggregation
+    - topic.CmSpatMessageCountProgressionEventAggregation
+    - topic.CmRevocableEnabledLaneAlignmentEventAggregation
+    - topic.CmPriorityPreemptionRequestEvent
+    - topic.CmVehicleMisbehaviorEvents
+    - topic.CmPriorityRequestMetrics
+    - topic.CmRtcmMinimumDataEvents
+    - topic.CmRtcmBroadcastRateEvents
+    - topic.CmRtcmMessageCountProgressionEvents
+    # Table topics (compacted), tombstones are skipped
+    - topic.CmLaneDirectionOfTravelNotification
+    - topic.CmConnectionOfTravelNotification
+    - topic.CmSpatTimeChangeDetailsNotification
+    - topic.CmSignalStateConflictNotification
+    - topic.CmSignalGroupAlignmentNotification
+    - topic.CmIntersectionReferenceAlignmentNotification
+    - topic.CmLaneDirectionOfTravelAssessment
+    - topic.CmConnectionOfTravelAssessment
+    - topic.CmNotification
+    - topic.CmStopLineStopAssessment
+    - topic.CmStopLineStopNotification
+    - topic.CmStopLinePassageAssessment
+    - topic.CmStopLinePassageNotification
+    - topic.CmTimestampDeltaNotification
+    - topic.CmSpatTransitionNotification
+    - topic.CmEventStateProgressionNotification
+    - topic.CmRevocableEnabledLaneAlignmentNotification
+    - topic.CmIntersectionReferenceAlignmentNotificationAggregation
+    - topic.CmSignalGroupAlignmentNotificationAggregation
+    - topic.CmSignalStateConflictNotificationAggregation
+    - topic.CmSpatTimeChangeDetailsNotificationAggregation
+    - topic.CmEventStateProgressionNotificationAggregation
+    - topic.CmRevocableEnabledLaneAlignmentNotificationAggregation
 
 # Compact raw S3 archive connector (docs/S3_Archive.md), created when CONNECT_CREATE_S3_RAW_ARCHIVE=true.
 # Writes only the listed metadata fields of each decoded ODE record as gzip compressed JSON lines. The bucket,

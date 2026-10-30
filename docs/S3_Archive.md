@@ -1,6 +1,6 @@
 # S3 Archive Kafka Connector
 
-The S3 archive connector continuously copies processed ODE, GeoJSON Converter, Deduplicator and jpo-mec-deposit Kafka topics to Amazon S3. It replaces nightly MongoDB backups as the long term retention mechanism for data that is published to Kafka. The connector runs on the existing jpo-utils Kafka Connect deployment, next to the MongoDB sink connectors, and is created and updated by the `kafka-connect-setup` (Jikkou) service.
+The S3 archive connector continuously copies processed ODE, PPM, GeoJSON Converter, Deduplicator and jpo-mec-deposit Kafka topics, and optionally the Conflict Monitor topics, to Amazon S3. It replaces nightly MongoDB backups as the long term retention mechanism for data that is published to Kafka. The connector runs on the existing jpo-utils Kafka Connect deployment, next to the MongoDB sink connectors, and is created and updated by the `kafka-connect-setup` (Jikkou) service.
 
 **Table of Contents**
 
@@ -43,7 +43,7 @@ The Confluent Community License permits free use, including in production. It on
 ## 2. How It Works
 
 ```text
-ODE / GeoJSON Converter / Deduplicator / jpo-mec-deposit
+ODE / PPM / GeoJSON Converter / Deduplicator / jpo-mec-deposit / Conflict Monitor (optional)
         |
         v
   Kafka topics --> Kafka Connect worker --> sink.S3Archive --> s3://<bucket>/<environment>/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
@@ -58,7 +58,7 @@ ODE / GeoJSON Converter / Deduplicator / jpo-mec-deposit
 
   Objects are gzip compressed newline delimited files.
 - **Time partitioning.** The prefix comes from the Kafka record timestamp in UTC, which is the time the record was produced to Kafka (ingestion time), not the event time inside the message.
-- **Traceability to Kafka.** Each object key contains the source topic, the Kafka partition and the offset of the first record in the object. Line `n` (starting at 0) of an object holds the record at offset `startOffset + n`. This holds for the archived topics, which are non-compacted and non-transactional, with null value records skipped. See [Data Retrieval](#11-data-retrieval).
+- **Traceability to Kafka.** Each object key contains the source topic, the Kafka partition and the offset of the first record in the object. Line `n` (starting at 0) of an object holds the record at offset `startOffset + n`. This holds for non-compacted, non-transactional topics with no null value records. The Conflict Monitor table topics are compacted, so their objects can have offset gaps; use the record content to find a record on Kafka. See [Data Retrieval](#11-data-retrieval).
 - **Offsets.** Kafka offsets are only committed after the objects that hold those records are written to S3. They are stored in the standard Kafka consumer group of the connector.
 - **Compact raw archive.** An optional second connector, `sink.S3RawArchive`, keeps only the `odeReceivedAt`, `originIp` and `asn1` fields of the decoded topics, for replaying the received messages at lower storage cost. See [Compact Raw Archive](#15-compact-raw-archive).
 
@@ -85,6 +85,8 @@ ODE / GeoJSON Converter / Deduplicator / jpo-mec-deposit
 | `topic.OdeDriverAlertJson` | ODE | Driver alert | Yes |
 | `topic.OdeTimJsonTMCFiltered` | ODE | TIM (TMC generated) | Yes |
 | `topic.OdeTIMCertExpirationTimeJson` | ODE | TIM certificate expiration | Yes |
+| `topic.SDWDepositorInput` | ODE | TIMs sent to the SDX through the SDW depositor | No |
+| `topic.FilteredOdeBsmJson`, `topic.FilteredOdeTimJson`, `topic.FilteredOdeSpatJson` | PPM (jpo-cvdp) | Privacy filtered BSM, TIM and SPaT, only produced when the PPM is deployed | No |
 | `topic.OdeRawEncodedBSMJson`, `...TIMJson`, `...MAPJson`, `...SPATJson`, `...SRMJson`, `...SSMJson`, `...PSMJson`, `...SDSMJson`, `...RTCMJson`, `...RSMJson` | ODE | Raw encoded messages of all 10 types, allows re-decoding | No |
 | `topic.ProcessedBsm`, `topic.ProcessedMap`, `topic.ProcessedMapWKT`, `topic.ProcessedSpat`, `topic.ProcessedSrm`, `topic.ProcessedSsm`, `topic.ProcessedRtcm` | GeoJSON Converter | Processed messages | Yes, except `ProcessedMapWKT` |
 | `topic.DeduplicatedOdeBsmJson`, `topic.DeduplicatedOdeTimJson`, `topic.DeduplicatedOdeMapJson`, `topic.DeduplicatedProcessedBsm`, `topic.DeduplicatedProcessedMap`, `topic.DeduplicatedProcessedMapWKT`, `topic.DeduplicatedProcessedSpat` | Deduplicator | Deduplicated messages | Yes, when the deduplicator is enabled |
@@ -96,15 +98,26 @@ Notes on the inventory:
 - **Message types without a processed topic:** PSM, SDSM, RSM and TIM have no `topic.Processed*` topic. Their decoded `topic.Ode*Json` topics are archived.
 - **Topics that do not exist:** topics from applications that are not deployed, such as the Deduplicator topics, are not consumed until they exist. Remove them from the list to avoid repeated `UNKNOWN_TOPIC_OR_PARTITION` consumer warnings, which only appear when `CONNECT_LOG_LEVEL` is `WARN` or lower.
 
+### Archived with `CONNECT_S3_ARCHIVE_CONFLICTMONITOR=true`
+
+The Conflict Monitor topics are listed in `s3Archive.conflictMonitorTopics` and are added to the archive list when `CONNECT_S3_ARCHIVE_CONFLICTMONITOR=true`. The flag is ignored when `CONNECT_S3_TOPICS` replaces the list.
+
+| Topics | Content | Also stored in MongoDB |
+|---|---|---|
+| 40 stream topics, e.g. `topic.CmBsmEvents`, `topic.CmSignalStateConflictEvents`, `topic.CmSpatMinimumDataEventAggregation`, `topic.CmPriorityRequestMetrics` | Events, event aggregations and metrics | Yes, except the RTCM broadcast rate, minimum data and message count progression topics |
+| 23 compacted table topics, e.g. `topic.CmNotification`, `topic.CmSignalStateConflictNotification`, `topic.CmStopLineStopAssessment` | Notifications, notification aggregations and assessments | Yes |
+
+- **Compacted topics:** Kafka removes older records with the same key from these topics. Records that are compacted away before the connector reads them are not archived, and tombstones are skipped. Their objects can have offset gaps, see [How It Works](#2-how-it-works).
+- **Not archived:** the internal topics `topic.CmBsmJsonRepartition` and `topic.CmBsmIntersection`, `topic.CmKafkaStateChangeEvents`, the config tables (`topic.CmDefaultConfigTable`, `topic.CmCustomConfigTable`, `topic.CmMergedConfigTable`, `topic.CmIntersectionConfigTable`), `topic.CmMapBoundingBox`, the `topic.Cm*RevisionCounterEvents` tables, and `topic.CmEvent` and `topic.CmAssessment`, which repeat the records of the individual event and assessment topics.
+
 ### Not archived
 
 | Topic | Reason |
 |---|---|
-| `topic.Asn1DecoderInput`, `topic.Asn1DecoderOutput`, `topic.Asn1EncoderInput`, `topic.Asn1EncoderOutput`, `topic.SDWDepositorInput` | Internal processing topics; their content is archived in the raw and decoded topics. |
+| `topic.Asn1DecoderInput`, `topic.Asn1DecoderOutput`, `topic.Asn1EncoderInput`, `topic.Asn1EncoderOutput` | Internal processing topics; their content is archived in the raw and decoded topics. |
 | `topic.OdeTimKTableJson` | Compacted state topic backing a KTable, contains tombstones. |
-| `topic.FilteredOdeBsmJson`, `topic.FilteredOdeSpatJson`, `topic.FilteredOdeTimJson` | Privacy filtered copies. These are only produced when the PPM (jpo-cvdp) is deployed; add them if the filtered data must be retained. |
 | `dlq.*` | ODE dead letter topics; add them if failed raw messages must be retained. |
-| Conflict Monitor, Intersection API, RSU status monitor topics | Outside the scope of the ODE and jpo-mec-deposit archive; add them with `CONNECT_S3_TOPICS` if required. |
+| Intersection API, RSU status monitor topics | Outside the scope of the archive; add them with `CONNECT_S3_TOPICS` if required. |
 
 [Back to top](#s3-archive-kafka-connector)
 
@@ -121,6 +134,7 @@ The connector is created only when `CONNECT_CREATE_S3_ARCHIVE=true`. All setting
 | `CONNECT_S3_REGION` | `us-east-1` | Bucket region. Also set as `AWS_REGION` on the `kafka-connect` container. |
 | `CONNECT_S3_ENVIRONMENT` | `local` | **Required in production.** First prefix level, e.g. `itsa-prod`. |
 | `CONNECT_S3_TOPICS` | values file list | Comma separated list of topics. Replaces the values file list. |
+| `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | `false` | Also archive the Conflict Monitor topics in `s3Archive.conflictMonitorTopics`, see [Topic Inventory](#3-topic-inventory). Ignored when `CONNECT_S3_TOPICS` is set. |
 | `CONNECT_S3_TASKS_MAX` | `1` | Number of connector tasks. Topic partitions are spread across tasks. |
 | `CONNECT_S3_FLUSH_SIZE` | `10000` | Maximum records per object. |
 | `CONNECT_S3_ROTATE_INTERVAL_MS` | `120000` | Maximum time before an open object is committed. Keep well below 5 minutes to meet the archive latency target. |

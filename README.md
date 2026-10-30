@@ -212,7 +212,7 @@ The following environment variables can be used to configure Kafka Connectors:
 
 ### S3 Archive Kafka Connector
 
-The Kafka Connect image also includes the [Confluent Amazon S3 Sink Connector](https://docs.confluent.io/kafka-connectors/s3-sink/current/overview.html) (version `12.1.13`, [Confluent Community License](https://www.confluent.io/confluent-community-license)). When enabled, the `kafka-connect-setup` service creates a `sink.S3Archive` connector that continuously archives the raw values of the configured ODE, GeoJSON Converter, Deduplicator and jpo-mec-deposit topics to Amazon S3 as gzip compressed, newline delimited objects:
+The Kafka Connect image also includes the [Confluent Amazon S3 Sink Connector](https://docs.confluent.io/kafka-connectors/s3-sink/current/overview.html) (version `12.1.13`, [Confluent Community License](https://www.confluent.io/confluent-community-license)). When enabled, the `kafka-connect-setup` service creates a `sink.S3Archive` connector that continuously archives the raw values of the configured ODE, PPM, SDW depositor input, GeoJSON Converter, Deduplicator and jpo-mec-deposit topics, and optionally the Conflict Monitor topics, to Amazon S3 as gzip compressed, newline delimited objects:
 
 ```text
 <bucket>/<CONNECT_S3_ENVIRONMENT>/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
@@ -227,6 +227,7 @@ The archived topics are listed under `s3Archive.topics` in [kafka-connectors-val
 | `CONNECT_S3_REGION` | AWS region of the bucket (default: `us-east-1`) |
 | `CONNECT_S3_ENVIRONMENT` | Top level S3 prefix, e.g. the deployment environment name |
 | `CONNECT_S3_TOPICS` | Optional comma separated list of topics that replaces the default topic list |
+| `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | Whether to also archive the Conflict Monitor event, assessment, notification and metrics topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
 | `CONNECT_S3_TASKS_MAX` | Optional number of connector tasks (default: `1`) |
 | `CONNECT_S3_FLUSH_SIZE` | Optional maximum records per S3 object (default: `10000`) |
 | `CONNECT_S3_ROTATE_INTERVAL_MS` | Optional maximum time before an open S3 object is committed (default: `120000`) |

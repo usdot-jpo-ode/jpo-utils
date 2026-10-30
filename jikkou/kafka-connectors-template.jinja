@@ -129,6 +129,8 @@ spec:
 {#-------  Create S3 archive sink connector with env variable CONNECT_CREATE_S3_ARCHIVE = true ----------#}
 {% if system.env.CONNECT_CREATE_S3_ARCHIVE %}
 {% set s3 = values.s3Archive %}
+{% set s3Topics = s3.topics | join(',') %}
+{% if system.env.CONNECT_S3_ARCHIVE_CONFLICTMONITOR %}{% set s3Topics = s3Topics ~ ',' ~ (s3.conflictMonitorTopics | join(',')) %}{% endif %}
 ---
 apiVersion: "kafka.jikkou.io/v1beta1"
 kind: "KafkaConnector"
@@ -141,7 +143,7 @@ spec:
   tasksMax: {{ system.env.CONNECT_S3_TASKS_MAX | default(s3.tasksMax, true) }}
   config:
     connector.class: {{ s3.connectorClass }}
-    topics: "{{ system.env.CONNECT_S3_TOPICS | default(s3.topics | join(','), true) }}"
+    topics: "{{ system.env.CONNECT_S3_TOPICS | default(s3Topics, true) }}"
 
     # Raw record values are written unchanged, one record per line, in gzip compressed objects
     key.converter: org.apache.kafka.connect.converters.ByteArrayConverter
