@@ -16,6 +16,7 @@ services:
           memory: 4G
     ports:
       - "8083:8083"
+      - "9404:9404" # Prometheus JMX exporter
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/connectors"]
       interval: 30s
@@ -48,8 +49,15 @@ services:
       CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_LOG4J_ROOT_LOGLEVEL: ${CONNECT_LOG_LEVEL:-ERROR}
-      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=${CONNECT_LOG_LEVEL:-ERROR},org.reflections=${CONNECT_LOG_LEVEL:-ERROR},com.mongodb.kafka=${CONNECT_LOG_LEVEL:-ERROR}"
+      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=${CONNECT_LOG_LEVEL:-ERROR},org.reflections=${CONNECT_LOG_LEVEL:-ERROR},com.mongodb.kafka=${CONNECT_LOG_LEVEL:-ERROR},io.confluent.connect.s3=${CONNECT_LOG_LEVEL:-ERROR}"
       CONNECT_PLUGIN_PATH: /usr/share/confluent-hub-components
+      KAFKA_OPTS: "-javaagent:/usr/share/jmx-exporter/jmx_prometheus_javaagent.jar=9404:/usr/share/jmx-exporter/jmx-exporter.yml"
+      # The S3 sink connector uses the AWS default credential provider chain. In AWS, use an IAM role
+      # (EC2 instance profile, ECS task role or EKS IRSA) and leave the access keys blank.
+      # The access keys are only intended for the local S3 emulator (s3_local profile).
+      AWS_REGION: ${CONNECT_S3_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${CONNECT_S3_LOCAL_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${CONNECT_S3_LOCAL_SECRET_ACCESS_KEY:-}
 
   kafka-connect-setup:
     profiles:
@@ -86,5 +94,55 @@ services:
       
       MONGO_DB_IP: ${MONGO_IP:-mongo}
       MONGO_DB_NAME: ${MONGO_DB_NAME:-CV}
+
+      # S3 archive connector, see docs/S3_Archive.md
+      CONNECT_CREATE_S3_ARCHIVE: ${CONNECT_CREATE_S3_ARCHIVE:-false}
+      CONNECT_S3_BUCKET_NAME: ${CONNECT_S3_BUCKET_NAME:-}
+      CONNECT_S3_REGION: ${CONNECT_S3_REGION:-us-east-1}
+      CONNECT_S3_ENVIRONMENT: ${CONNECT_S3_ENVIRONMENT:-}
+      CONNECT_S3_TOPICS: ${CONNECT_S3_TOPICS:-}
+      # Apps of kafka-topics-values.yaml whose topics are archived, ignored when CONNECT_S3_TOPICS is set
+      CONNECT_S3_ARCHIVE_ODE: ${CONNECT_S3_ARCHIVE_ODE:-true}
+      CONNECT_S3_ARCHIVE_GEOJSONCONVERTER: ${CONNECT_S3_ARCHIVE_GEOJSONCONVERTER:-true}
+      CONNECT_S3_ARCHIVE_DEDUPLICATOR: ${CONNECT_S3_ARCHIVE_DEDUPLICATOR:-true}
+      CONNECT_S3_ARCHIVE_MECDEPOSIT: ${CONNECT_S3_ARCHIVE_MECDEPOSIT:-true}
+      CONNECT_S3_ARCHIVE_CONFLICTMONITOR: ${CONNECT_S3_ARCHIVE_CONFLICTMONITOR:-false}
+      CONNECT_S3_ARCHIVE_INTERSECTION_API: ${CONNECT_S3_ARCHIVE_INTERSECTION_API:-false}
+      CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR: ${CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR:-false}
+      CONNECT_S3_ARCHIVE_OTHER: ${CONNECT_S3_ARCHIVE_OTHER:-false}
+      CONNECT_S3_TASKS_MAX: ${CONNECT_S3_TASKS_MAX:-}
+      CONNECT_S3_FLUSH_SIZE: ${CONNECT_S3_FLUSH_SIZE:-}
+      CONNECT_S3_ROTATE_INTERVAL_MS: ${CONNECT_S3_ROTATE_INTERVAL_MS:-}
+      CONNECT_S3_ACL_CANNED: ${CONNECT_S3_ACL_CANNED:-}
+      CONNECT_S3_STORE_URL: ${CONNECT_S3_STORE_URL:-}
+      # Compact raw S3 archive connector, uses the CONNECT_S3_* bucket and environment settings above
+      CONNECT_CREATE_S3_RAW_ARCHIVE: ${CONNECT_CREATE_S3_RAW_ARCHIVE:-false}
+      CONNECT_S3_RAW_TOPICS: ${CONNECT_S3_RAW_TOPICS:-}
     volumes:
       - ${CONNECT_KAFKA_CONNECTORS_VALUES_FILE:-./jikkou/kafka-connectors-values.yaml}:/kafka-connectors-values.yaml
+
+  # Local S3 compatible emulator for development and testing of the S3 archive connector only.
+  # Not intended for production use, where a real Amazon S3 bucket must be used.
+  s3-local:
+    profiles:
+      - s3_local
+    image: adobe/s3mock:5.2.3
+    hostname: s3-local
+    restart: ${RESTART_POLICY:-on-failure:3}
+    ports:
+      - "${S3_LOCAL_PORT:-9000}:9090"
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${CONNECT_S3_BUCKET_NAME:-jpo-archive-local}
+      COM_ADOBE_TESTING_S3MOCK_STORE_REGION: ${CONNECT_S3_REGION:-us-east-1}
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
+    volumes:
+      - s3_local_data:/s3mockroot
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+volumes:
+  s3_local_data:

@@ -52,7 +52,7 @@ spec:
   configs:
     cleanup.policy: {{ topic.cleanUpPolicy | default(delete) }}
     min.insync.replicas: {{ system.env.KAFKA_TOPIC_MIN_INSYNC_REPLICAS | default(values.minInsyncReplicas) }}
-    retention.ms: {{ system.env.KAFKA_CUSTOM_TOPIC_RETENTION_MS | default(topic.retentionMs) | default(values.retentionMs) }}
+    retention.ms: {{ topic.fixedRetentionMs | default(system.env.KAFKA_CUSTOM_TOPIC_RETENTION_MS) | default(topic.retentionMs) | default(values.retentionMs) }}
 {% endfor %}
 
 {% endmacro %}

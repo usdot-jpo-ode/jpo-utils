@@ -16,6 +16,11 @@ scrape_configs:
         - 'kafka-exporter:8000'
   - job_name: 'mongodb-exporter'
     static_configs:
-      - targets: 
+      - targets:
         - 'mongodb-exporter:9216'
+    metrics_path: /metrics
+  - job_name: 'kafka-connect'
+    static_configs:
+      - targets:
+        - 'kafka-connect:9404'
     metrics_path: /metrics

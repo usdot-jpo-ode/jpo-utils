@@ -430,3 +430,128 @@ apps:
   other:
     name: other
     connectors:
+
+
+#--------------------------------------------------------------------------------------
+# S3 archive sink connector
+#
+# Created when env var: CONNECT_CREATE_S3_ARCHIVE = true
+# Continuously archives the raw values of the listed Kafka topics to Amazon S3 as gzip
+# compressed, newline delimited objects. See docs/S3_Archive.md for the topic inventory,
+# deployment, monitoring and recovery instructions.
+#
+# The archived topics are not listed here. They are read from the app topic lists in
+# kafka-topics-values.yaml (streamTopics, tableTopics and customTopics), so new topics are
+# archived without a second list to maintain. Each app in apps is archived when its env
+# variable is true, and the topics in excludeTopics are left out.
+#
+# The topic list can be replaced without rebuilding any image by setting env var
+# CONNECT_S3_TOPICS to a comma separated list of topics and re-running the
+# kafka-connect-setup service. The app flags are then ignored.
+#
+# Topics that do not exist are not consumed until they are created.
+#
+# Ref: https://docs.confluent.io/kafka-connectors/s3-sink/current/configuration_options.html
+#--------------------------------------------------------------------------------------
+s3Archive:
+  connectorName: S3Archive  # Created as sink.<connectorName>, consumer group connect-sink.<connectorName>
+  connectorClass: "io.confluent.connect.s3.S3SinkConnector"
+  tasksMax: 1                       # env var: CONNECT_S3_TASKS_MAX
+  region: us-east-1                 # env var: CONNECT_S3_REGION
+  environment: local                # env var: CONNECT_S3_ENVIRONMENT, top level S3 prefix
+  pathFormat: "'year'=YYYY/'month'=MM/'day'=dd/'hour'=HH"
+  partitionDurationMs: 3600000
+  fileExtension: .json
+  compressionType: gzip
+  flushSize: 10000                  # env var: CONNECT_S3_FLUSH_SIZE, max records per S3 object
+  rotateScheduleIntervalMs: 120000  # env var: CONNECT_S3_ROTATE_INTERVAL_MS, max time before an open object is committed
+  partSize: 5242880                 # 5 MB S3 multipart upload part size (minimum allowed by S3)
+  elasticBufferInitCapacity: 131072 # 128 KB initial buffer per open object, grows up to partSize
+  partRetries: 5                    # S3 request retries before the write is retried by the connector task
+  retryBackoffMs: 1000              # Initial S3 request retry backoff, doubles on each retry
+  taskRetryBackoffMs: 5000          # Backoff before the connector task retries a failed S3 write
+  maxPollIntervalMs: 900000         # Consumer max.poll.interval.ms, allows S3 retries without consumer group rebalances
+  dlqTopicName: dlq.S3Archive
+  dlqReplicationFactor: 1
+  # Apps of kafka-topics-values.yaml whose topics are archived when envVar is true. default is
+  # used when envVar is not set.
+  apps:
+    - name: ode                     # ODE decoded, raw encoded, SDW depositor input and PPM topics
+      envVar: CONNECT_S3_ARCHIVE_ODE
+      default: true
+    - name: geojsonconverter
+      envVar: CONNECT_S3_ARCHIVE_GEOJSONCONVERTER
+      default: true
+    - name: deduplicator
+      envVar: CONNECT_S3_ARCHIVE_DEDUPLICATOR
+      default: true
+    - name: mecdeposit
+      envVar: CONNECT_S3_ARCHIVE_MECDEPOSIT
+      default: true
+    - name: conflictmonitor         # Table topics are compacted, tombstones are skipped
+      envVar: CONNECT_S3_ARCHIVE_CONFLICTMONITOR
+      default: false
+    - name: intersection_api
+      envVar: CONNECT_S3_ARCHIVE_INTERSECTION_API
+      default: false
+    - name: rsustatusmonitor
+      envVar: CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR
+      default: false
+    - name: other
+      envVar: CONNECT_S3_ARCHIVE_OTHER
+      default: false
+  # Internal processing, state and config topics of the apps above that are not archived
+  excludeTopics:
+    # ODE internal processing topics, their content is archived in the raw and decoded topics
+    - topic.Asn1DecoderInput
+    - topic.Asn1DecoderOutput
+    - topic.Asn1EncoderInput
+    - topic.Asn1EncoderOutput
+    # ODE compacted state topic backing a KTable
+    - topic.OdeTimKTableJson
+    # Conflict Monitor internal repartition, join and state topics
+    - topic.CmBsmJsonRepartition
+    - topic.CmBsmIntersection
+    - topic.CmKafkaStateChangeEvents
+    # Conflict Monitor config tables
+    - topic.CmDefaultConfigTable
+    - topic.CmCustomConfigTable
+    - topic.CmMergedConfigTable
+    - topic.CmIntersectionConfigTable
+    # Conflict Monitor state tables
+    - topic.CmMapBoundingBox
+    - topic.CmMapRevisionCounterEvents
+    - topic.CmSpatRevisionCounterEvents
+    - topic.CmBsmRevisionCounterEvents
+    # Conflict Monitor topics that repeat the records of the individual event and assessment topics
+    - topic.CmEvent
+    - topic.CmAssessment
+
+# Compact raw S3 archive connector (docs/S3_Archive.md), created when CONNECT_CREATE_S3_RAW_ARCHIVE=true.
+# Writes only the listed metadata fields of each decoded ODE record as gzip compressed JSON lines. The bucket,
+# region, environment, partitioning and retry settings are shared with s3Archive.
+s3RawArchive:
+  connectorName: S3RawArchive       # Created as sink.<connectorName>, consumer group connect-sink.<connectorName>
+  tasksMax: 1
+  pathPrefix: compact               # Objects are written under <environment>/<pathPrefix>/<topic>/
+  fields:                           # Fields kept from each record's metadata
+    - odeReceivedAt
+    - originIp
+    - asn1
+  compressionLevel: 9               # gzip level, 9 is the highest compression
+  flushSize: 10000                  # max records per S3 object
+  rotateScheduleIntervalMs: 120000  # max time before an open object is committed
+  dlqTopicName: dlq.S3RawArchive
+  # Decoded ODE topics, whose metadata keeps the received packet in asn1. Derived TIM topics
+  # (TMC filtered, cert expiration) and driver alerts are left out since they add no new packets.
+  topics:                           # env var: CONNECT_S3_RAW_TOPICS
+    - topic.OdeBsmJson
+    - topic.OdeTimJson
+    - topic.OdeMapJson
+    - topic.OdeSpatJson
+    - topic.OdeSrmJson
+    - topic.OdeSsmJson
+    - topic.OdePsmJson
+    - topic.OdeSdsmJson
+    - topic.OdeRtcmJson
+    - topic.OdeRsmJson

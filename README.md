@@ -22,6 +22,7 @@ The JPO ITS utilities repository serves as a central location for deploying open
     - [Configuration](#configuration)
     - [Configure Kafka Connector Creation](#configure-kafka-connector-creation)
     - [Quick Run](#quick-run-2)
+    - [S3 Archive Kafka Connector](#s3-archive-kafka-connector)
   - [5. Monitoring Stack](#5-monitoring-stack)
     - [Configuration](#configuration-1)
     - [Quick Run](#quick-run-3)
@@ -209,6 +210,61 @@ The following environment variables can be used to configure Kafka Connectors:
    3. Click `OdeBsmJson`, and now you should see your message!
 8. Feel free to test this with other topics or by producing to these topics using the [ODE](https://github.com/usdot-jpo-ode/jpo-ode)
 
+### S3 Archive Kafka Connector
+
+The Kafka Connect image also includes the [Confluent Amazon S3 Sink Connector](https://docs.confluent.io/kafka-connectors/s3-sink/current/overview.html) (version `12.1.13`, [Confluent Community License](https://www.confluent.io/confluent-community-license)). When enabled, the `kafka-connect-setup` service creates a `sink.S3Archive` connector that continuously archives the raw values of the configured ODE, PPM, SDW depositor input, GeoJSON Converter, Deduplicator and jpo-mec-deposit topics, and optionally the Conflict Monitor, Intersection API and RSU status monitor topics, to Amazon S3 as gzip compressed, newline delimited objects:
+
+```text
+<bucket>/<CONNECT_S3_ENVIRONMENT>/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
+```
+
+The archived topics are read from the app topic lists in [kafka-topics-values.yaml](jikkou/kafka-topics-values.yaml), so they don't have to be listed twice. Each app is archived when its `CONNECT_S3_ARCHIVE_<APP>` variable is true, and the internal topics in `s3Archive.excludeTopics` in [kafka-connectors-values.yaml](jikkou/kafka-connectors-values.yaml) are left out. `CONNECT_S3_TOPICS` replaces the whole list without rebuilding any image. AWS credentials are never stored in the connector configuration, the connector uses the AWS default credential provider chain (IAM role) of the `kafka-connect` container.
+
+| Environment Variable | Description |
+|---|---|
+| `CONNECT_CREATE_S3_ARCHIVE` | Whether to create the S3 archive connector (default: `false`) |
+| `CONNECT_S3_BUCKET_NAME` | Destination S3 bucket, required when the S3 archive connector is enabled |
+| `CONNECT_S3_REGION` | AWS region of the bucket (default: `us-east-1`) |
+| `CONNECT_S3_ENVIRONMENT` | Top level S3 prefix, e.g. the deployment environment name |
+| `CONNECT_S3_TOPICS` | Optional comma separated list of topics that replaces the app topic lists |
+| `CONNECT_S3_ARCHIVE_ODE` | Whether to archive the ODE decoded, raw encoded, SDW depositor input and PPM topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_GEOJSONCONVERTER` | Whether to archive the GeoJSON Converter topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_DEDUPLICATOR` | Whether to archive the Deduplicator topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_MECDEPOSIT` | Whether to archive the jpo-mec-deposit topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | Whether to archive the Conflict Monitor event, assessment, notification and metrics topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_INTERSECTION_API` | Whether to archive the Intersection API topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR` | Whether to archive the RSU status monitor topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_OTHER` | Whether to archive the topics of the `other` app (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_TASKS_MAX` | Optional number of connector tasks (default: `1`) |
+| `CONNECT_S3_FLUSH_SIZE` | Optional maximum records per S3 object (default: `10000`) |
+| `CONNECT_S3_ROTATE_INTERVAL_MS` | Optional maximum time before an open S3 object is committed (default: `120000`) |
+| `CONNECT_S3_ACL_CANNED` | Optional canned ACL for created objects, e.g. `bucket-owner-full-control` |
+| `CONNECT_S3_STORE_URL` | Local S3 emulator endpoint only, leave blank for Amazon S3 |
+| `CONNECT_S3_LOCAL_ACCESS_KEY_ID`, `CONNECT_S3_LOCAL_SECRET_ACCESS_KEY` | Local S3 emulator credentials only, leave blank for Amazon S3 |
+| `CONNECT_CREATE_S3_RAW_ARCHIVE` | Whether to create the compact raw S3 archive connector `sink.S3RawArchive` (default: `false`). It uses the bucket and environment settings above. |
+| `CONNECT_S3_RAW_TOPICS` | Optional comma separated list of topics that replaces the compact raw archive's default list of decoded ODE topics |
+
+The optional compact raw archive connector `sink.S3RawArchive` writes only the `odeReceivedAt`, `originIp` and `asn1` metadata fields of each decoded ODE record (`topic.OdeBsmJson`, `topic.OdeMapJson`, `topic.OdeTimJson` and the other decoded message topics), as gzip compressed JSON lines under `<bucket>/<CONNECT_S3_ENVIRONMENT>/compact/<topic>/...`. These fields are enough to replay the received messages through the ODE, at 30 to 55% less storage than the full decoded records. Records without `asn1`, such as TIMs deposited through the ODE REST API, are skipped. See [S3_Archive.md](docs/S3_Archive.md#15-compact-raw-archive).
+
+To try the connector locally with the [S3Mock](https://github.com/adobe/S3Mock) emulator:
+
+1. Complete the Kafka Connect quick run above.
+2. In the `.env` file, set `COMPOSE_PROFILES` to `kafka_connect_standalone,kafka_setup,s3_local` and set:
+
+   ```bash
+   CONNECT_CREATE_S3_ARCHIVE=true
+   CONNECT_S3_BUCKET_NAME=jpo-archive-local
+   CONNECT_S3_ENVIRONMENT=local
+   CONNECT_S3_STORE_URL=http://s3-local:9090
+   CONNECT_S3_LOCAL_ACCESS_KEY_ID=local
+   CONNECT_S3_LOCAL_SECRET_ACCESS_KEY=local
+   ```
+
+3. Run `docker compose up -d --build`, then produce a message to `topic.OdeBsmJson`.
+4. After the rotation interval, list the archived objects: `curl "http://localhost:9000/jpo-archive-local?list-type=2&prefix=local/"`
+
+See [docs/S3_Archive.md](docs/S3_Archive.md) for the topic inventory, AWS deployment, IAM, encryption, lifecycle, monitoring, recovery, replay and data retrieval instructions.
+
 [Back to top](#toc)
 
 ## 5. Monitoring Stack
@@ -250,6 +306,7 @@ The following environment variables can be used to configure the monitoring stac
    - Node Exporter: `http://localhost:9100/metrics`
    - Kafka Lag Exporter: `http://localhost:8000/metrics`
    - MongoDB Exporter: `http://localhost:9216/metrics`
+   - Kafka Connect JMX Exporter: `http://localhost:9404/metrics`
 
 ### Scrape Configurations
 
@@ -261,6 +318,7 @@ The following scrape configurations are available:
 - `node_exporter` - scrapes the Node Exporter metrics
 - `kafka_exporter` - scrapes the Kafka Lag Exporter metrics
 - `mongodb_exporter` - scrapes the MongoDB Exporter metrics
+- `kafka-connect` - scrapes the Kafka Connect worker, connector and task metrics from the JMX exporter in the `kafka-connect` service
 
 [Back to top](#toc)
 

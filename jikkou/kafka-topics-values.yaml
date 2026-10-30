@@ -41,6 +41,11 @@ deleteRetentionMs: 3600000
 #   - Stream Topics are normal topics with cleanup.policy = delete
 #   - Table Topics are intended to back KTables and have cleanup.policy = compact
 #
+# Custom topics support these optional settings:
+#   - partitions, cleanUpPolicy
+#   - retentionMs: used when env var KAFKA_CUSTOM_TOPIC_RETENTION_MS is not set
+#   - fixedRetentionMs: always used, ignoring KAFKA_CUSTOM_TOPIC_RETENTION_MS
+#
 #--------------------------------------------------------------------------------------
 apps:
   ode:
@@ -212,6 +217,16 @@ apps:
       - topicName: topic.KafkaConnectStatus
         partitions: 3
         cleanUpPolicy: compact
+      # Dead letter queue for the S3 archive connector (docs/S3_Archive.md)
+      - topicName: dlq.S3Archive
+        partitions: 1
+        cleanUpPolicy: delete
+        fixedRetentionMs: 604800000  # 7 days
+      # Dead letter queue for the compact raw S3 archive connector (docs/S3_Archive.md)
+      - topicName: dlq.S3RawArchive
+        partitions: 1
+        cleanUpPolicy: delete
+        fixedRetentionMs: 604800000  # 7 days
   mecdeposit:
     name: jpo-mecdeposit
     streamTopics:
