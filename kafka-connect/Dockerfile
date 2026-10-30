@@ -31,7 +31,7 @@ USER root
 RUN rm -rf /etc/pki/ca-trust/extracted \
     && rm -f /var/lib/rpm/.rpm.lock /var/lib/rpm/rpmdb.sqlite-shm /var/lib/rpm/rpmdb.sqlite-wal
 COPY --from=certificates /updated/ /
-USER 1000
+USER appuser
 
 # MongoDB Kafka Connector
 # Docs: https://www.mongodb.com/docs/kafka-connector/current/
