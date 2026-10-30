@@ -172,6 +172,8 @@ The Kafka Connect image uses Confluent Platform 8.4.0, with MongoDB Kafka Connec
 
 The base image still contains a vulnerable `ca-certificates` package ([CVE-2026-114406](https://access.redhat.com/security/vulnerabilities/RHSB-2026-012)) and has no package manager. The Dockerfile updates that package using a UBI 9 build stage, then copies the certificate files and updated RPM metadata into the runtime image. The package manager remains in the build stage. Remove this workaround when the Connect base image includes the fixed CA package.
 
+The `confluent-hub` client is [deprecated](https://docs.confluent.io/platform/current/connect/confluent-hub/index.html). Future base-image upgrades may require migrating plugin installation to `confluent connect plugin install`.
+
 ### Configure Kafka Connector Creation
 
 The Kafka connectors created by the `kafka-connect-setup` service are configured in the [kafka-connectors-values.yaml](jikkou/kafka-connectors-values.yaml) file.  The connectors in that file are organized by the application, and given parameters to define the Kafka -> MongoDB sync connector:

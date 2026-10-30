@@ -35,6 +35,7 @@ RUN rm -rf /etc/pki/ca-trust/extracted \
 COPY --from=certificates /updated/ /
 USER appuser
 
+# confluent-hub is deprecated; see README image maintenance notes before upgrading.
 # MongoDB Kafka Connector
 # Docs: https://www.mongodb.com/docs/kafka-connector/current/
 RUN confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:1.13.0
