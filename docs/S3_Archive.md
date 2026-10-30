@@ -66,9 +66,11 @@ ODE / PPM / GeoJSON Converter / Deduplicator / jpo-mec-deposit / Conflict Monito
 
 ## 3. Topic Inventory
 
-> **Status: proposed, pending approval for production.** The inventory below was built from the jpo-ode `application.yaml` topic configuration, the Jikkou topic and connector values files, and the jpo-mec-deposit topic configuration. The topics actually produced in each production deployment must be confirmed before go-live. The list is stored in `s3Archive.topics` in [kafka-connectors-values.yaml](../jikkou/kafka-connectors-values.yaml).
+> **Status: proposed, pending approval for production.** The inventory below was built from the jpo-ode `application.yaml` topic configuration, the Jikkou topic and connector values files, and the jpo-mec-deposit topic configuration. The topics actually produced in each production deployment must be confirmed before go-live. The topics are not listed twice. The connector archives the `streamTopics`, `tableTopics` and `customTopics` of each app in [kafka-topics-values.yaml](../jikkou/kafka-topics-values.yaml) whose `CONNECT_S3_ARCHIVE_<APP>` variable is true, see [Configuration](#4-configuration). The apps, their default flags and the excluded topics are set in `s3Archive.apps` and `s3Archive.excludeTopics` in [kafka-connectors-values.yaml](../jikkou/kafka-connectors-values.yaml).
 
 ### Archived by default
+
+These are the topics of the `ode`, `geojsonconverter`, `deduplicator` and `mecdeposit` apps, without the excluded topics listed under [Not archived](#not-archived).
 
 | Topic | Producer | Message type | Also stored in MongoDB |
 |---|---|---|---|
@@ -96,11 +98,11 @@ Notes on the inventory:
 
 - **jpo-mec-deposit:** its only Kafka topic is `topic.MecDepositMetrics`. The messages it receives over MQTT and REST are deposited into the ODE, so they are archived through the ODE topics above.
 - **Message types without a processed topic:** PSM, SDSM, RSM and TIM have no `topic.Processed*` topic. Their decoded `topic.Ode*Json` topics are archived.
-- **Topics that do not exist:** topics from applications that are not deployed, such as the Deduplicator topics, are not consumed until they exist. Remove them from the list to avoid repeated `UNKNOWN_TOPIC_OR_PARTITION` consumer warnings, which only appear when `CONNECT_LOG_LEVEL` is `WARN` or lower.
+- **Topics that do not exist:** topics from applications that are not deployed, such as the Deduplicator topics, are not consumed until they exist. Set the app's `CONNECT_S3_ARCHIVE_<APP>` variable to `false` to avoid repeated `UNKNOWN_TOPIC_OR_PARTITION` consumer warnings, which only appear when `CONNECT_LOG_LEVEL` is `WARN` or lower.
 
 ### Archived with `CONNECT_S3_ARCHIVE_CONFLICTMONITOR=true`
 
-The Conflict Monitor topics are listed in `s3Archive.conflictMonitorTopics` and are added to the archive list when `CONNECT_S3_ARCHIVE_CONFLICTMONITOR=true`. The flag is ignored when `CONNECT_S3_TOPICS` replaces the list.
+The topics of the `conflictmonitor` app are added to the archive list when `CONNECT_S3_ARCHIVE_CONFLICTMONITOR=true`.
 
 | Topics | Content | Also stored in MongoDB |
 |---|---|---|
@@ -108,16 +110,24 @@ The Conflict Monitor topics are listed in `s3Archive.conflictMonitorTopics` and 
 | 23 compacted table topics, e.g. `topic.CmNotification`, `topic.CmSignalStateConflictNotification`, `topic.CmStopLineStopAssessment` | Notifications, notification aggregations and assessments | Yes |
 
 - **Compacted topics:** Kafka removes older records with the same key from these topics. Records that are compacted away before the connector reads them are not archived, and tombstones are skipped. Their objects can have offset gaps, see [How It Works](#2-how-it-works).
-- **Not archived:** the internal topics `topic.CmBsmJsonRepartition` and `topic.CmBsmIntersection`, `topic.CmKafkaStateChangeEvents`, the config tables (`topic.CmDefaultConfigTable`, `topic.CmCustomConfigTable`, `topic.CmMergedConfigTable`, `topic.CmIntersectionConfigTable`), `topic.CmMapBoundingBox`, the `topic.Cm*RevisionCounterEvents` tables, and `topic.CmEvent` and `topic.CmAssessment`, which repeat the records of the individual event and assessment topics.
+- **Excluded:** the internal topics `topic.CmBsmJsonRepartition` and `topic.CmBsmIntersection`, `topic.CmKafkaStateChangeEvents`, the config tables (`topic.CmDefaultConfigTable`, `topic.CmCustomConfigTable`, `topic.CmMergedConfigTable`, `topic.CmIntersectionConfigTable`), `topic.CmMapBoundingBox`, the `topic.Cm*RevisionCounterEvents` tables, and `topic.CmEvent` and `topic.CmAssessment`, which repeat the records of the individual event and assessment topics.
+
+### Archived with the other app flags
+
+| Variable | Topics |
+|---|---|
+| `CONNECT_S3_ARCHIVE_INTERSECTION_API=true` | `topic.IntersectionApiRsuStatus` |
+| `CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR=true` | `topic.RmNearestNeighborUnresponsiveEvent`, `topic.RmNearestNeighborUnresponsiveNotification`, and the compacted `topic.RmIntersectionStatusRecords` and `topic.RmMonitoringStatusRecords` |
+| `CONNECT_S3_ARCHIVE_OTHER=true` | The topics added to the `other` app |
 
 ### Not archived
 
 | Topic | Reason |
 |---|---|
-| `topic.Asn1DecoderInput`, `topic.Asn1DecoderOutput`, `topic.Asn1EncoderInput`, `topic.Asn1EncoderOutput` | Internal processing topics; their content is archived in the raw and decoded topics. |
-| `topic.OdeTimKTableJson` | Compacted state topic backing a KTable, contains tombstones. |
-| `dlq.*` | ODE dead letter topics; add them if failed raw messages must be retained. |
-| Intersection API, RSU status monitor topics | Outside the scope of the archive; add them with `CONNECT_S3_TOPICS` if required. |
+| `topic.Asn1DecoderInput`, `topic.Asn1DecoderOutput`, `topic.Asn1EncoderInput`, `topic.Asn1EncoderOutput` | Excluded. Internal processing topics; their content is archived in the raw and decoded topics. |
+| `topic.OdeTimKTableJson` | Excluded. Compacted state topic backing a KTable, contains tombstones. |
+| `dlq.*` | Not in the app topic lists. Add them with `CONNECT_S3_TOPICS` if failed raw messages must be retained. |
+| Kafka Connect topics (`kafkaconnect` app) | Kafka Connect internal config, offset and status topics, and the S3 archive DLQs. |
 
 [Back to top](#s3-archive-kafka-connector)
 
@@ -133,8 +143,15 @@ The connector is created only when `CONNECT_CREATE_S3_ARCHIVE=true`. All setting
 | `CONNECT_S3_BUCKET_NAME` | | **Required.** Destination bucket. The bucket must already exist. |
 | `CONNECT_S3_REGION` | `us-east-1` | Bucket region. Also set as `AWS_REGION` on the `kafka-connect` container. |
 | `CONNECT_S3_ENVIRONMENT` | `local` | **Required in production.** First prefix level, e.g. `itsa-prod`. |
-| `CONNECT_S3_TOPICS` | values file list | Comma separated list of topics. Replaces the values file list. |
-| `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | `false` | Also archive the Conflict Monitor topics in `s3Archive.conflictMonitorTopics`, see [Topic Inventory](#3-topic-inventory). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_TOPICS` | app topics | Comma separated list of topics. Replaces the app topics and the `CONNECT_S3_ARCHIVE_<APP>` flags. |
+| `CONNECT_S3_ARCHIVE_ODE` | `true` | Archive the ODE decoded, raw encoded, SDW depositor input and PPM topics. |
+| `CONNECT_S3_ARCHIVE_GEOJSONCONVERTER` | `true` | Archive the GeoJSON Converter topics. |
+| `CONNECT_S3_ARCHIVE_DEDUPLICATOR` | `true` | Archive the Deduplicator topics. |
+| `CONNECT_S3_ARCHIVE_MECDEPOSIT` | `true` | Archive the jpo-mec-deposit topics. |
+| `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | `false` | Archive the Conflict Monitor event, assessment, notification and metrics topics. |
+| `CONNECT_S3_ARCHIVE_INTERSECTION_API` | `false` | Archive the Intersection API topics. |
+| `CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR` | `false` | Archive the RSU status monitor topics. |
+| `CONNECT_S3_ARCHIVE_OTHER` | `false` | Archive the topics of the `other` app. |
 | `CONNECT_S3_TASKS_MAX` | `1` | Number of connector tasks. Topic partitions are spread across tasks. |
 | `CONNECT_S3_FLUSH_SIZE` | `10000` | Maximum records per object. |
 | `CONNECT_S3_ROTATE_INTERVAL_MS` | `120000` | Maximum time before an open object is committed. Keep well below 5 minutes to meet the archive latency target. |
@@ -371,8 +388,9 @@ All commands use the Kafka Connect REST API on port `8083`. Changes made directl
 
 Either option takes effect without rebuilding any image:
 
-- Set `CONNECT_S3_TOPICS` in the `.env` file to the full comma separated topic list.
-- Or edit `s3Archive.topics` in a mounted copy of the values file.
+- Set the `CONNECT_S3_ARCHIVE_<APP>` variables in the `.env` file to choose the apps whose topics are archived.
+- Or set `CONNECT_S3_TOPICS` to the full comma separated topic list.
+- Topics added to an app in `kafka-topics-values.yaml` are archived with that app. To leave one out, add it to `s3Archive.excludeTopics` in `kafka-connectors-values.yaml`. Both files are read from the `jpo-jikkou` image.
 
 Then run `docker compose up kafka-connect-setup`. Only `sink.S3Archive` is updated; the MongoDB connectors are left unchanged. A newly added topic is archived from its earliest retained offset.
 

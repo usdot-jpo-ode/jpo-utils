@@ -129,8 +129,21 @@ spec:
 {#-------  Create S3 archive sink connector with env variable CONNECT_CREATE_S3_ARCHIVE = true ----------#}
 {% if system.env.CONNECT_CREATE_S3_ARCHIVE %}
 {% set s3 = values.s3Archive %}
-{% set s3Topics = s3.topics | join(',') %}
-{% if system.env.CONNECT_S3_ARCHIVE_CONFLICTMONITOR %}{% set s3Topics = s3Topics ~ ',' ~ (s3.conflictMonitorTopics | join(',')) %}{% endif %}
+{# The topics come from the app topic lists in kafka-topics-values.yaml, loaded as values.topicApps by
+   kafka_connector_init.sh. Each app in s3.apps is archived when its env variable is true. #}
+{% set s3TopicList = [] %}
+{% for app in s3.apps %}
+{# default is used when the env variable is not set or blank #}
+{% set archiveApp = system.env[app.envVar] | default('') | string | lower %}
+{% if archiveApp == '' %}{% set archiveApp = app.default | string | lower %}{% endif %}
+{% if archiveApp == 'true' %}
+{% set topicApp = values.topicApps[app.name] %}
+{% for topicName in topicApp.streamTopics | default([]) %}{% if topicName not in s3.excludeTopics and topicName not in s3TopicList %}{% do s3TopicList.append(topicName) %}{% endif %}{% endfor %}
+{% for topicName in topicApp.tableTopics | default([]) %}{% if topicName not in s3.excludeTopics and topicName not in s3TopicList %}{% do s3TopicList.append(topicName) %}{% endif %}{% endfor %}
+{% for topic in topicApp.customTopics | default([]) %}{% if topic.topicName not in s3.excludeTopics and topic.topicName not in s3TopicList %}{% do s3TopicList.append(topic.topicName) %}{% endif %}{% endfor %}
+{% endif %}
+{% endfor %}
+{% set s3Topics = s3TopicList | join(',') %}
 ---
 apiVersion: "kafka.jikkou.io/v1beta1"
 kind: "KafkaConnector"

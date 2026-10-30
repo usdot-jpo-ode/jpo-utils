@@ -440,16 +440,16 @@ apps:
 # compressed, newline delimited objects. See docs/S3_Archive.md for the topic inventory,
 # deployment, monitoring and recovery instructions.
 #
-# The Conflict Monitor topics in conflictMonitorTopics are added with env var
-# CONNECT_S3_ARCHIVE_CONFLICTMONITOR = true.
+# The archived topics are not listed here. They are read from the app topic lists in
+# kafka-topics-values.yaml (streamTopics, tableTopics and customTopics), so new topics are
+# archived without a second list to maintain. Each app in apps is archived when its env
+# variable is true, and the topics in excludeTopics are left out.
 #
-# The topic list can be replaced without rebuilding any image by:
-#   - setting env var CONNECT_S3_TOPICS to a comma separated list of topics, or
-#   - mounting a custom copy of this file with CONNECT_KAFKA_CONNECTORS_VALUES_FILE
-# and re-running the kafka-connect-setup service.
+# The topic list can be replaced without rebuilding any image by setting env var
+# CONNECT_S3_TOPICS to a comma separated list of topics and re-running the
+# kafka-connect-setup service. The app flags are then ignored.
 #
-# Topics for applications that are not deployed can be removed from the list. Topics that
-# do not exist are not consumed until they are created.
+# Topics that do not exist are not consumed until they are created.
 #
 # Ref: https://docs.confluent.io/kafka-connectors/s3-sink/current/configuration_options.html
 #--------------------------------------------------------------------------------------
@@ -473,126 +473,59 @@ s3Archive:
   maxPollIntervalMs: 900000         # Consumer max.poll.interval.ms, allows S3 retries without consumer group rebalances
   dlqTopicName: dlq.S3Archive
   dlqReplicationFactor: 1
-  topics:
-    # ODE decoded JSON
-    - topic.OdeBsmJson
-    - topic.OdeTimJson
-    - topic.OdeMapJson
-    - topic.OdeSpatJson
-    - topic.OdeSrmJson
-    - topic.OdeSsmJson
-    - topic.OdePsmJson
-    - topic.OdeSdsmJson
-    - topic.OdeRtcmJson
-    - topic.OdeRsmJson
-    - topic.OdeDriverAlertJson
-    - topic.OdeTimJsonTMCFiltered
-    - topic.OdeTIMCertExpirationTimeJson
-    # ODE SDW depositor input (TIMs sent to the SDX)
-    - topic.SDWDepositorInput
-    # PPM (jpo-cvdp) privacy filtered output
-    - topic.FilteredOdeBsmJson
-    - topic.FilteredOdeTimJson
-    - topic.FilteredOdeSpatJson
-    # ODE raw encoded JSON
-    - topic.OdeRawEncodedBSMJson
-    - topic.OdeRawEncodedTIMJson
-    - topic.OdeRawEncodedMAPJson
-    - topic.OdeRawEncodedSPATJson
-    - topic.OdeRawEncodedSRMJson
-    - topic.OdeRawEncodedSSMJson
-    - topic.OdeRawEncodedPSMJson
-    - topic.OdeRawEncodedSDSMJson
-    - topic.OdeRawEncodedRTCMJson
-    - topic.OdeRawEncodedRSMJson
-    # GeoJSON Converter processed messages
-    - topic.ProcessedBsm
-    - topic.ProcessedMap
-    - topic.ProcessedMapWKT
-    - topic.ProcessedSpat
-    - topic.ProcessedSrm
-    - topic.ProcessedSsm
-    - topic.ProcessedRtcm
-    # Deduplicator
-    - topic.DeduplicatedOdeBsmJson
-    - topic.DeduplicatedOdeTimJson
-    - topic.DeduplicatedOdeMapJson
-    - topic.DeduplicatedProcessedBsm
-    - topic.DeduplicatedProcessedMap
-    - topic.DeduplicatedProcessedMapWKT
-    - topic.DeduplicatedProcessedSpat
-    # jpo-mec-deposit
-    - topic.MecDepositMetrics
-
-  # Conflict Monitor events, assessments, notifications and metrics, appended to topics when
-  # CONNECT_S3_ARCHIVE_CONFLICTMONITOR=true (ignored when CONNECT_S3_TOPICS is set).
-  # Internal repartition, join, config and state topics are not archived.
-  conflictMonitorTopics:
-    # Stream topics
-    - topic.CmAppHealthNotifications
-    - topic.CmMapBroadcastRateEvents
-    - topic.CmMapMinimumDataEvents
-    - topic.CmSpatBroadcastRateEvents
-    - topic.CmSpatMinimumDataEvents
-    - topic.CmBsmEvents
-    - topic.CmConnectionOfTravelEvent
-    - topic.CmLaneDirectionOfTravelEvent
-    - topic.CmStopLinePassageEvent
-    - topic.CmStopLineStopEvent
-    - topic.CmSpatTimeChangeDetailsEvent
-    - topic.CmSignalGroupAlignmentEvents
-    - topic.CmIntersectionReferenceAlignmentEvents
-    - topic.CmSignalStateConflictEvents
-    - topic.CmTimestampDeltaEvent
-    - topic.CmSpatTransitionEvent
-    - topic.CmBsmMessageCountProgressionEvents
-    - topic.CmMapMessageCountProgressionEvents
-    - topic.CmSpatMessageCountProgressionEvents
-    - topic.CmRtcmMessageCountProgressionEventAggregation
-    - topic.CmEventStateProgressionEvent
-    - topic.CmRevocableEnabledLaneAlignmentEvent
-    - topic.CmSpatMinimumDataEventAggregation
-    - topic.CmMapMinimumDataEventAggregation
-    - topic.CmRtcmMinimumDataEventAggregation
-    - topic.CmIntersectionReferenceAlignmentEventAggregation
-    - topic.CmSignalGroupAlignmentEventAggregation
-    - topic.CmSignalStateConflictEventAggregation
-    - topic.CmSpatTimeChangeDetailsEventAggregation
-    - topic.CmEventStateProgressionEventAggregation
-    - topic.CmBsmMessageCountProgressionEventAggregation
-    - topic.CmMapMessageCountProgressionEventAggregation
-    - topic.CmSpatMessageCountProgressionEventAggregation
-    - topic.CmRevocableEnabledLaneAlignmentEventAggregation
-    - topic.CmPriorityPreemptionRequestEvent
-    - topic.CmVehicleMisbehaviorEvents
-    - topic.CmPriorityRequestMetrics
-    - topic.CmRtcmMinimumDataEvents
-    - topic.CmRtcmBroadcastRateEvents
-    - topic.CmRtcmMessageCountProgressionEvents
-    # Table topics (compacted), tombstones are skipped
-    - topic.CmLaneDirectionOfTravelNotification
-    - topic.CmConnectionOfTravelNotification
-    - topic.CmSpatTimeChangeDetailsNotification
-    - topic.CmSignalStateConflictNotification
-    - topic.CmSignalGroupAlignmentNotification
-    - topic.CmIntersectionReferenceAlignmentNotification
-    - topic.CmLaneDirectionOfTravelAssessment
-    - topic.CmConnectionOfTravelAssessment
-    - topic.CmNotification
-    - topic.CmStopLineStopAssessment
-    - topic.CmStopLineStopNotification
-    - topic.CmStopLinePassageAssessment
-    - topic.CmStopLinePassageNotification
-    - topic.CmTimestampDeltaNotification
-    - topic.CmSpatTransitionNotification
-    - topic.CmEventStateProgressionNotification
-    - topic.CmRevocableEnabledLaneAlignmentNotification
-    - topic.CmIntersectionReferenceAlignmentNotificationAggregation
-    - topic.CmSignalGroupAlignmentNotificationAggregation
-    - topic.CmSignalStateConflictNotificationAggregation
-    - topic.CmSpatTimeChangeDetailsNotificationAggregation
-    - topic.CmEventStateProgressionNotificationAggregation
-    - topic.CmRevocableEnabledLaneAlignmentNotificationAggregation
+  # Apps of kafka-topics-values.yaml whose topics are archived when envVar is true. default is
+  # used when envVar is not set.
+  apps:
+    - name: ode                     # ODE decoded, raw encoded, SDW depositor input and PPM topics
+      envVar: CONNECT_S3_ARCHIVE_ODE
+      default: true
+    - name: geojsonconverter
+      envVar: CONNECT_S3_ARCHIVE_GEOJSONCONVERTER
+      default: true
+    - name: deduplicator
+      envVar: CONNECT_S3_ARCHIVE_DEDUPLICATOR
+      default: true
+    - name: mecdeposit
+      envVar: CONNECT_S3_ARCHIVE_MECDEPOSIT
+      default: true
+    - name: conflictmonitor         # Table topics are compacted, tombstones are skipped
+      envVar: CONNECT_S3_ARCHIVE_CONFLICTMONITOR
+      default: false
+    - name: intersection_api
+      envVar: CONNECT_S3_ARCHIVE_INTERSECTION_API
+      default: false
+    - name: rsustatusmonitor
+      envVar: CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR
+      default: false
+    - name: other
+      envVar: CONNECT_S3_ARCHIVE_OTHER
+      default: false
+  # Internal processing, state and config topics of the apps above that are not archived
+  excludeTopics:
+    # ODE internal processing topics, their content is archived in the raw and decoded topics
+    - topic.Asn1DecoderInput
+    - topic.Asn1DecoderOutput
+    - topic.Asn1EncoderInput
+    - topic.Asn1EncoderOutput
+    # ODE compacted state topic backing a KTable
+    - topic.OdeTimKTableJson
+    # Conflict Monitor internal repartition, join and state topics
+    - topic.CmBsmJsonRepartition
+    - topic.CmBsmIntersection
+    - topic.CmKafkaStateChangeEvents
+    # Conflict Monitor config tables
+    - topic.CmDefaultConfigTable
+    - topic.CmCustomConfigTable
+    - topic.CmMergedConfigTable
+    - topic.CmIntersectionConfigTable
+    # Conflict Monitor state tables
+    - topic.CmMapBoundingBox
+    - topic.CmMapRevisionCounterEvents
+    - topic.CmSpatRevisionCounterEvents
+    - topic.CmBsmRevisionCounterEvents
+    # Conflict Monitor topics that repeat the records of the individual event and assessment topics
+    - topic.CmEvent
+    - topic.CmAssessment
 
 # Compact raw S3 archive connector (docs/S3_Archive.md), created when CONNECT_CREATE_S3_RAW_ARCHIVE=true.
 # Writes only the listed metadata fields of each decoded ODE record as gzip compressed JSON lines. The bucket,

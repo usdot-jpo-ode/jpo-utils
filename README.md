@@ -212,13 +212,13 @@ The following environment variables can be used to configure Kafka Connectors:
 
 ### S3 Archive Kafka Connector
 
-The Kafka Connect image also includes the [Confluent Amazon S3 Sink Connector](https://docs.confluent.io/kafka-connectors/s3-sink/current/overview.html) (version `12.1.13`, [Confluent Community License](https://www.confluent.io/confluent-community-license)). When enabled, the `kafka-connect-setup` service creates a `sink.S3Archive` connector that continuously archives the raw values of the configured ODE, PPM, SDW depositor input, GeoJSON Converter, Deduplicator and jpo-mec-deposit topics, and optionally the Conflict Monitor topics, to Amazon S3 as gzip compressed, newline delimited objects:
+The Kafka Connect image also includes the [Confluent Amazon S3 Sink Connector](https://docs.confluent.io/kafka-connectors/s3-sink/current/overview.html) (version `12.1.13`, [Confluent Community License](https://www.confluent.io/confluent-community-license)). When enabled, the `kafka-connect-setup` service creates a `sink.S3Archive` connector that continuously archives the raw values of the configured ODE, PPM, SDW depositor input, GeoJSON Converter, Deduplicator and jpo-mec-deposit topics, and optionally the Conflict Monitor, Intersection API and RSU status monitor topics, to Amazon S3 as gzip compressed, newline delimited objects:
 
 ```text
 <bucket>/<CONNECT_S3_ENVIRONMENT>/<topic>/year=YYYY/month=MM/day=dd/hour=HH/<topic>+<partition>+<startOffset>.json.gz
 ```
 
-The archived topics are listed under `s3Archive.topics` in [kafka-connectors-values.yaml](jikkou/kafka-connectors-values.yaml) and can be overridden with `CONNECT_S3_TOPICS` without rebuilding any image. AWS credentials are never stored in the connector configuration, the connector uses the AWS default credential provider chain (IAM role) of the `kafka-connect` container.
+The archived topics are read from the app topic lists in [kafka-topics-values.yaml](jikkou/kafka-topics-values.yaml), so they don't have to be listed twice. Each app is archived when its `CONNECT_S3_ARCHIVE_<APP>` variable is true, and the internal topics in `s3Archive.excludeTopics` in [kafka-connectors-values.yaml](jikkou/kafka-connectors-values.yaml) are left out. `CONNECT_S3_TOPICS` replaces the whole list without rebuilding any image. AWS credentials are never stored in the connector configuration, the connector uses the AWS default credential provider chain (IAM role) of the `kafka-connect` container.
 
 | Environment Variable | Description |
 |---|---|
@@ -226,8 +226,15 @@ The archived topics are listed under `s3Archive.topics` in [kafka-connectors-val
 | `CONNECT_S3_BUCKET_NAME` | Destination S3 bucket, required when the S3 archive connector is enabled |
 | `CONNECT_S3_REGION` | AWS region of the bucket (default: `us-east-1`) |
 | `CONNECT_S3_ENVIRONMENT` | Top level S3 prefix, e.g. the deployment environment name |
-| `CONNECT_S3_TOPICS` | Optional comma separated list of topics that replaces the default topic list |
-| `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | Whether to also archive the Conflict Monitor event, assessment, notification and metrics topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_TOPICS` | Optional comma separated list of topics that replaces the app topic lists |
+| `CONNECT_S3_ARCHIVE_ODE` | Whether to archive the ODE decoded, raw encoded, SDW depositor input and PPM topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_GEOJSONCONVERTER` | Whether to archive the GeoJSON Converter topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_DEDUPLICATOR` | Whether to archive the Deduplicator topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_MECDEPOSIT` | Whether to archive the jpo-mec-deposit topics (default: `true`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | Whether to archive the Conflict Monitor event, assessment, notification and metrics topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_INTERSECTION_API` | Whether to archive the Intersection API topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR` | Whether to archive the RSU status monitor topics (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
+| `CONNECT_S3_ARCHIVE_OTHER` | Whether to archive the topics of the `other` app (default: `false`). Ignored when `CONNECT_S3_TOPICS` is set. |
 | `CONNECT_S3_TASKS_MAX` | Optional number of connector tasks (default: `1`) |
 | `CONNECT_S3_FLUSH_SIZE` | Optional maximum records per S3 object (default: `10000`) |
 | `CONNECT_S3_ROTATE_INTERVAL_MS` | Optional maximum time before an open S3 object is committed (default: `120000`) |
