@@ -84,7 +84,7 @@ spec:
 {% endif %}
 
 {# ----------------- S3 sink settings shared by the S3 archive connectors ----------------- #}
-{# Bucket, region, environment, partitioning, retries and encryption come from values.s3Archive and the
+{# Bucket, region, environment, partitioning and retries come from values.s3Archive and the
    CONNECT_S3_* env variables. s3 is the connector's own values section (dlqTopicName). #}
 {# Ref: https://docs.confluent.io/kafka-connectors/s3-sink/current/configuration_options.html #}
 {% macro s3_sink_common(s3, topicsDir, flushSize, rotateScheduleIntervalMs) %}
@@ -121,8 +121,6 @@ spec:
     errors.deadletterqueue.topic.replication.factor: {{ base.dlqReplicationFactor }}
     errors.deadletterqueue.context.headers.enable: true
 
-    {%+ if system.env.CONNECT_S3_SSE_ALGORITHM %}s3.ssea.name: {{ system.env.CONNECT_S3_SSE_ALGORITHM }}{% endif %}
-    {%+ if system.env.CONNECT_S3_SSE_KMS_KEY_ID %}s3.sse.kms.key.id: "{{ system.env.CONNECT_S3_SSE_KMS_KEY_ID }}"{% endif %}
     {%+ if system.env.CONNECT_S3_ACL_CANNED %}s3.acl.canned: {{ system.env.CONNECT_S3_ACL_CANNED }}{% endif %}
     {%+ if system.env.CONNECT_S3_STORE_URL %}store.url: "{{ system.env.CONNECT_S3_STORE_URL }}"{% endif %}
     {%+ if system.env.CONNECT_S3_STORE_URL %}s3.path.style.access.enabled: true{% endif %}

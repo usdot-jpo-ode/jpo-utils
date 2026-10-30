@@ -516,8 +516,8 @@ s3Archive:
     - topic.MecDepositMetrics
 
 # Compact raw S3 archive connector (docs/S3_Archive.md), created when CONNECT_CREATE_S3_RAW_ARCHIVE=true.
-# Writes only the listed metadata fields of each raw encoded record as gzip compressed JSON lines. The bucket,
-# region, environment, partitioning, retry and encryption settings are shared with s3Archive.
+# Writes only the listed metadata fields of each decoded ODE record as gzip compressed JSON lines. The bucket,
+# region, environment, partitioning and retry settings are shared with s3Archive.
 s3RawArchive:
   connectorName: S3RawArchive       # Created as sink.<connectorName>, consumer group connect-sink.<connectorName>
   tasksMax: 1

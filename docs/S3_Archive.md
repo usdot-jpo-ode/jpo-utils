@@ -32,7 +32,7 @@ The Confluent connector was selected because:
 
 - The Kafka Connect image already uses Confluent Community License components (the `confluentinc/cp-kafka-connect` base image and `confluentinc/connect-transforms`).
 - It installs the same way as the existing plugins.
-- It provides the required time based partitioning, gzip compression, multi record objects, the AWS default credential provider chain and server side encryption out of the box.
+- It provides the required time based partitioning, gzip compression, multi record objects and the AWS default credential provider chain out of the box.
 
 The Confluent Community License permits free use, including in production. It only prohibits offering the software as a competing SaaS product. The Apache 2.0 [Aiven S3 sink connector](https://github.com/Aiven-Open/cloud-storage-connectors-for-apache-kafka) is the fallback if that license is not approved. It would need a different plugin installation and different connector settings in the Jikkou template.
 
@@ -124,8 +124,6 @@ The connector is created only when `CONNECT_CREATE_S3_ARCHIVE=true`. All setting
 | `CONNECT_S3_TASKS_MAX` | `1` | Number of connector tasks. Topic partitions are spread across tasks. |
 | `CONNECT_S3_FLUSH_SIZE` | `10000` | Maximum records per object. |
 | `CONNECT_S3_ROTATE_INTERVAL_MS` | `120000` | Maximum time before an open object is committed. Keep well below 5 minutes to meet the archive latency target. |
-| `CONNECT_S3_SSE_ALGORITHM` | bucket default | `AES256` (SSE-S3) or `aws:kms` (SSE-KMS). |
-| `CONNECT_S3_SSE_KMS_KEY_ID` | | KMS key ARN or ID when `aws:kms` is used. |
 | `CONNECT_S3_ACL_CANNED` | | Optional canned ACL, e.g. `bucket-owner-full-control` for cross account buckets. |
 | `CONNECT_S3_STORE_URL` | | Local emulator only. Must be blank for Amazon S3. |
 | `CONNECT_S3_LOCAL_ACCESS_KEY_ID`, `CONNECT_S3_LOCAL_SECRET_ACCESS_KEY` | | Local emulator only. Must be blank for Amazon S3. |
@@ -175,8 +173,6 @@ The `s3Archive` section of [kafka-connectors-values.yaml](../jikkou/kafka-connec
    CONNECT_S3_BUCKET_NAME=<bucket>
    CONNECT_S3_REGION=us-east-1
    CONNECT_S3_ENVIRONMENT=itsa-prod
-   CONNECT_S3_SSE_ALGORITHM=aws:kms
-   CONNECT_S3_SSE_KMS_KEY_ID=arn:aws:kms:us-east-1:<account>:key/<key-id>
    ```
 
 6. **Rebuild or pull the Kafka Connect image** that includes the S3 plugin (`usdotjpoode/jpo-kafka-connect` or a local build). Restart the worker and the setup service:
@@ -212,27 +208,18 @@ The `s3Archive` section of [kafka-connectors-values.yaml](../jikkou/kafka-connec
       "Effect": "Allow",
       "Action": ["s3:PutObject", "s3:GetObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
       "Resource": "arn:aws:s3:::<bucket>/<environment>/*"
-    },
-    {
-      "Sid": "ArchiveKmsKey",
-      "Effect": "Allow",
-      "Action": ["kms:GenerateDataKey", "kms:Decrypt"],
-      "Resource": "arn:aws:kms:<region>:<account>:key/<key-id>"
     }
   ]
 }
 ```
 
 - **Why `s3:GetObject`:** the connector reads existing object names after a retry, to avoid overwriting committed objects.
-- **The KMS statement:** remove it when SSE-S3 (`AES256`) or the bucket default encryption is used.
 - **What the role cannot do:** it has no delete permissions, so the connector cannot remove archived data.
 
 ### Encryption
 
 - **At rest:**
-  - Enable [default bucket encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html) with SSE-S3 or SSE-KMS.
-  - Optionally, set `CONNECT_S3_SSE_ALGORITHM` and `CONNECT_S3_SSE_KMS_KEY_ID` so that the connector requests encryption explicitly on every upload.
-  - With SSE-KMS, enable an [S3 Bucket Key](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html) to reduce KMS request costs.
+  - The connector does not request encryption on its uploads. Objects are encrypted with the bucket's [default encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html), configured on the bucket.
 - **In transit:** the connector always uses HTTPS for Amazon S3. Enforce it with a bucket policy:
 
 ```json
@@ -455,7 +442,7 @@ zcat "$f" | awk -v start="$start" '{print start + NR - 1 "\t" $0}' | head
 | Symptom | Cause and resolution |
 |---|---|
 | Task `FAILED` with `Unable to load credentials from any of the providers in the chain` | No IAM role is reachable. Check the instance profile / task role and the IMDS hop limit (section 5). The error lists each provider that was tried. |
-| Task `FAILED` with `Access Denied` or `403` | The IAM policy or KMS key policy is missing a permission (section 6). |
+| Task `FAILED` with `Access Denied` or `403` | The IAM policy or the bucket policy is missing a permission (section 6). `Multipart upload failed to complete ... upload id 'null'` means S3 rejected `CreateMultipartUpload`, so nothing was written or committed. |
 | Task `FAILED` with `bucket ... does not exist` or `UnknownHostException` | Wrong bucket name or region, or S3 / DNS not reachable when the task started. Restart the task after it is reachable. |
 | Connector missing after setup | `CONNECT_CREATE_S3_ARCHIVE` is not `true`, or `kafka-connect-setup` could not reach `CONNECT_URL`. Check the setup container logs. |
 | Archive latency keeps increasing while the task is `RUNNING` | S3 writes are failing and being retried; check the `kafka-connect` logs for `Exception on topic partition`. Throughput too low; increase `CONNECT_S3_TASKS_MAX` (requires topics with multiple partitions). |
@@ -554,7 +541,7 @@ The connector reads the records with the `JsonConverter` and applies three trans
 2. `io.confluent.connect.transforms.Filter$Value` (`filter.condition=$[?(@.asn1 =~ /.+/)]`, `filter.type=include`, `missing.or.null.behavior=exclude`) drops records whose `asn1` is missing, null or empty. It comes from the `confluentinc/connect-transforms` plugin, which is already installed in the Kafka Connect image.
 3. `ReplaceField$Value` (`include=odeReceivedAt,originIp,asn1`) keeps only those fields.
 
-`JsonFormat` then writes each result as one line. The bucket, region, environment, partitioning, flush, retry, error handling and encryption settings are shared with `sink.S3Archive` through the `s3_sink_common` macro in [kafka-connectors-template.jinja](../jikkou/kafka-connectors-template.jinja). The connector has its own consumer group `connect-sink.S3RawArchive` and its own dead letter queue `dlq.S3RawArchive`, with 7 day retention.
+`JsonFormat` then writes each result as one line. The bucket, region, environment, partitioning, flush, retry and error handling settings are shared with `sink.S3Archive` through the `s3_sink_common` macro in [kafka-connectors-template.jinja](../jikkou/kafka-connectors-template.jinja). The connector has its own consumer group `connect-sink.S3RawArchive` and its own dead letter queue `dlq.S3RawArchive`, with 7 day retention.
 
 **CPU:** the connector parses each decoded record, which is about 1.9 KB for a BSM and 12.5 KB for a MAP, and keeps about 0.4 KB and 2 KB of it. This uses more CPU than the full archive's byte-for-byte copy. Include both connectors when sizing the Kafka Connect worker.
 
@@ -562,7 +549,7 @@ The connector reads the records with the `JsonConverter` and applies three trans
 
 | Setting | Default | Description |
 |---|---|---|
-| `CONNECT_CREATE_S3_RAW_ARCHIVE` | `false` | Create or update `sink.S3RawArchive`. Uses `CONNECT_S3_BUCKET_NAME`, `CONNECT_S3_REGION`, `CONNECT_S3_ENVIRONMENT`, the SSE, ACL and store settings of [Configuration](#4-configuration). |
+| `CONNECT_CREATE_S3_RAW_ARCHIVE` | `false` | Create or update `sink.S3RawArchive`. Uses `CONNECT_S3_BUCKET_NAME`, `CONNECT_S3_REGION`, `CONNECT_S3_ENVIRONMENT`, the ACL and store settings of [Configuration](#4-configuration). |
 | `CONNECT_S3_RAW_TOPICS` | blank | Comma separated topic list that replaces `s3RawArchive.topics`. |
 | `s3RawArchive.topics` | the 10 decoded topics in [Source topics](#source-topics) | Topics to archive. |
 | `s3RawArchive.fields` | `odeReceivedAt`, `originIp`, `asn1` | Metadata fields kept in each line. |

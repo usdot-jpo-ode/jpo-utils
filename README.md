@@ -230,12 +230,10 @@ The archived topics are listed under `s3Archive.topics` in [kafka-connectors-val
 | `CONNECT_S3_TASKS_MAX` | Optional number of connector tasks (default: `1`) |
 | `CONNECT_S3_FLUSH_SIZE` | Optional maximum records per S3 object (default: `10000`) |
 | `CONNECT_S3_ROTATE_INTERVAL_MS` | Optional maximum time before an open S3 object is committed (default: `120000`) |
-| `CONNECT_S3_SSE_ALGORITHM` | Optional server side encryption, `AES256` or `aws:kms` |
-| `CONNECT_S3_SSE_KMS_KEY_ID` | Optional KMS key used with `aws:kms` encryption |
 | `CONNECT_S3_ACL_CANNED` | Optional canned ACL for created objects, e.g. `bucket-owner-full-control` |
 | `CONNECT_S3_STORE_URL` | Local S3 emulator endpoint only, leave blank for Amazon S3 |
 | `CONNECT_S3_LOCAL_ACCESS_KEY_ID`, `CONNECT_S3_LOCAL_SECRET_ACCESS_KEY` | Local S3 emulator credentials only, leave blank for Amazon S3 |
-| `CONNECT_CREATE_S3_RAW_ARCHIVE` | Whether to create the compact raw S3 archive connector `sink.S3RawArchive` (default: `false`). It uses the bucket, environment and encryption settings above. |
+| `CONNECT_CREATE_S3_RAW_ARCHIVE` | Whether to create the compact raw S3 archive connector `sink.S3RawArchive` (default: `false`). It uses the bucket and environment settings above. |
 | `CONNECT_S3_RAW_TOPICS` | Optional comma separated list of topics that replaces the compact raw archive's default list of decoded ODE topics |
 
 The optional compact raw archive connector `sink.S3RawArchive` writes only the `odeReceivedAt`, `originIp` and `asn1` metadata fields of each decoded ODE record (`topic.OdeBsmJson`, `topic.OdeMapJson`, `topic.OdeTimJson` and the other decoded message topics), as gzip compressed JSON lines under `<bucket>/<CONNECT_S3_ENVIRONMENT>/compact/<topic>/...`. These fields are enough to replay the received messages through the ODE, at 30 to 55% less storage than the full decoded records. Records without `asn1`, such as TIMs deposited through the ODE REST API, are skipped. See [S3_Archive.md](docs/S3_Archive.md#15-compact-raw-archive).
