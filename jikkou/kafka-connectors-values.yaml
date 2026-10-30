@@ -530,14 +530,16 @@ s3RawArchive:
   flushSize: 10000                  # max records per S3 object
   rotateScheduleIntervalMs: 120000  # max time before an open object is committed
   dlqTopicName: dlq.S3RawArchive
+  # Decoded ODE topics, whose metadata keeps the received packet in asn1. Derived TIM topics
+  # (TMC filtered, cert expiration) and driver alerts are left out since they add no new packets.
   topics:                           # env var: CONNECT_S3_RAW_TOPICS
-    - topic.OdeRawEncodedBSMJson
-    - topic.OdeRawEncodedTIMJson
-    - topic.OdeRawEncodedMAPJson
-    - topic.OdeRawEncodedSPATJson
-    - topic.OdeRawEncodedSRMJson
-    - topic.OdeRawEncodedSSMJson
-    - topic.OdeRawEncodedPSMJson
-    - topic.OdeRawEncodedSDSMJson
-    - topic.OdeRawEncodedRTCMJson
-    - topic.OdeRawEncodedRSMJson
+    - topic.OdeBsmJson
+    - topic.OdeTimJson
+    - topic.OdeMapJson
+    - topic.OdeSpatJson
+    - topic.OdeSrmJson
+    - topic.OdeSsmJson
+    - topic.OdePsmJson
+    - topic.OdeSdsmJson
+    - topic.OdeRtcmJson
+    - topic.OdeRsmJson

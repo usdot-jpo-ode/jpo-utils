@@ -162,7 +162,7 @@ spec:
 {% endif %}
 
 {#-------  Create compact raw S3 archive sink connector with env variable CONNECT_CREATE_S3_RAW_ARCHIVE = true ----------#}
-{# Writes only the configured metadata fields (odeReceivedAt, originIp, asn1) of the raw encoded topics, see docs/S3_Archive.md #}
+{# Writes only the configured metadata fields (odeReceivedAt, originIp, asn1) of the decoded ODE topics, see docs/S3_Archive.md #}
 {% if system.env.CONNECT_CREATE_S3_RAW_ARCHIVE %}
 {% set s3r = values.s3RawArchive %}
 ---
@@ -181,12 +181,17 @@ spec:
 
     # Each record is reduced to the configured fields of its metadata and written as one JSON line, e.g.
     # {"odeReceivedAt":"2026-10-29T20:15:22.405Z","originIp":"10.0.0.1","asn1":"0381004003..."}
+    # Records without metadata.asn1 (e.g. TIMs deposited through the ODE REST API) are dropped.
     key.converter: org.apache.kafka.connect.converters.ByteArrayConverter
     value.converter: org.apache.kafka.connect.json.JsonConverter
     value.converter.schemas.enable: false
-    transforms: metadata,fields
+    transforms: metadata,hasAsn1,fields
     transforms.metadata.type: org.apache.kafka.connect.transforms.ExtractField$Value
     transforms.metadata.field: metadata
+    transforms.hasAsn1.type: io.confluent.connect.transforms.Filter$Value
+    transforms.hasAsn1.filter.condition: "$[?(@.asn1 =~ /.+/)]"
+    transforms.hasAsn1.filter.type: include
+    transforms.hasAsn1.missing.or.null.behavior: exclude
     transforms.fields.type: org.apache.kafka.connect.transforms.ReplaceField$Value
     transforms.fields.include: "{{ s3r.fields | join(',') }}"
     format.class: io.confluent.connect.s3.format.json.JsonFormat
