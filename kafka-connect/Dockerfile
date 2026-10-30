@@ -31,14 +31,20 @@ RUN set -eu; rpm --root /rootfs -qa | sort > /packages.before \
     done < /updated-packages.files \
     && test ! -s var/lib/rpm/rpmdb.sqlite-wal \
     && cp -a --parents var/lib/rpm/rpmdb.sqlite /updated/ \
-    && test -s /updated/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem \
-    && test -s /updated/etc/pki/ca-trust/extracted/java/cacerts
+    # Generated trust bundles are required whenever ca-certificates changes.
+    && if grep -q '^ca-certificates-' /packages.changed; then \
+        test -s /updated/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem \
+        && test -s /updated/etc/pki/ca-trust/extracted/java/cacerts; \
+    fi
 
 FROM connect-base
 USER root
-# COPY merges directories; discard generated trust files removed by the update.
-RUN rm -rf /etc/pki/ca-trust/extracted \
-    && rm -f /var/lib/rpm/.rpm.lock /var/lib/rpm/rpmdb.sqlite-shm /var/lib/rpm/rpmdb.sqlite-wal
+COPY --from=package-updates /packages.changed /tmp/packages.changed
+# COPY merges directories; when ca-certificates changes, discard generated trust files removed by the update.
+RUN if grep -q '^ca-certificates-' /tmp/packages.changed; then \
+        rm -rf /etc/pki/ca-trust/extracted; \
+    fi \
+    && rm -f /tmp/packages.changed /var/lib/rpm/.rpm.lock /var/lib/rpm/rpmdb.sqlite-shm /var/lib/rpm/rpmdb.sqlite-wal
 COPY --from=package-updates /updated/ /
 USER appuser
 

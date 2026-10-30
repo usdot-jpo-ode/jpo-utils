@@ -175,7 +175,7 @@ The base image still contains vulnerable OS packages and has no package manager:
 - `ca-certificates` ([CVE-2026-114406](https://access.redhat.com/security/vulnerabilities/RHSB-2026-012))
 - `libbrotli` (CVE-2026-111497, fixed in `1.0.9-10.el9_8.1`)
 
-The Dockerfile upgrades the packages listed in `UPDATE_PACKAGES` using a UBI 9 build stage, then copies the files of every package that changed, plus the updated RPM metadata, into the runtime image. The package manager remains in the build stage. Remove a package from `UPDATE_PACKAGES` once the Connect base image includes its fix, and remove the stage when the list is empty.
+The Dockerfile upgrades the packages listed in `UPDATE_PACKAGES` using a UBI 9 build stage, then copies the files of every package that changed, plus the updated RPM metadata, into the runtime image. When `ca-certificates` changes, the build also requires the regenerated trust bundles and replaces the runtime image's generated trust directory. The package manager remains in the build stage. Remove a package from `UPDATE_PACKAGES` once the Connect base image includes its fix, and remove the stage when the list is empty.
 
 The `confluent-hub` client is [deprecated](https://docs.confluent.io/platform/current/connect/confluent-hub/index.html). Future base-image upgrades may require migrating plugin installation to `confluent connect plugin install`.
 
