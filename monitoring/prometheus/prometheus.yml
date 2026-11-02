@@ -19,3 +19,8 @@ scrape_configs:
       - targets: 
         - 'mongodb-exporter:9216'
     metrics_path: /metrics
+  - job_name: ode
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+        - ode:8080

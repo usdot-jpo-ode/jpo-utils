@@ -101,6 +101,10 @@ During operation, Kafka stores all the messages published to topics in files cal
 
 The Kafka topics created by the `kafka-setup` service are configured in the [kafka-topics-values.yaml](jikkou/kafka-topics-values.yaml) file.  The topics in that file are organized by the application, and sorted into "Stream Topics" (those with `cleanup.policy` = `delete`) and "Table Topics" (with `cleanup.policy` = `compact`).  
 
+Every application has a `dlqTopics` list for dead-letter topic names. Add names to that list to provision DLQs with the same application enablement setting as its other topics; empty lists create no DLQs. DLQ settings are shared across all applications: `KAFKA_DLQ_TOPIC_PARTITIONS` defaults to 4 and `KAFKA_DLQ_TOPIC_RETENTION_MS` defaults to 604800000 (seven days). Replicas and minimum in-sync replicas use the existing common topic settings.
+
+ODE raw topics remain in `apps.ode.streamTopics` and use the existing stream-topic creation settings, including `KAFKA_TOPIC_PARTITIONS` (default 1) and `KAFKA_TOPIC_RETENTION_MS` (default 300000, or five minutes). FFM quarantine topics are listed separately in `apps.ode.dlqTopics` with the `dlq.` prefix, for example `dlq.OdeRawEncodedBSMJson`. Jikkou creates both lists when `KAFKA_TOPIC_CREATE_ODE` is enabled. DLQ topics default to four partitions and seven days of retention. Run `kafka-setup` successfully before starting ODE. For custom raw-topic names, update both lists: ODE replaces a leading `topic.` with `dlq.` for quarantine, or prepends `dlq.` if there is no `topic.` prefix. Jikkou applies the configured retention, so set any longer retention you need before running setup.
+
 The following enviroment variables can be used to configure Kafka Topic creation.  
 
 | Environment Variable | Description |
@@ -111,7 +115,9 @@ The following enviroment variables can be used to configure Kafka Topic creation
 | `KAFKA_TOPIC_CREATE_DEDUPLICATOR` | Whether to create topics for the Deduplicator |
 | `KAFKA_TOPIC_CREATE_OTHER` | Whether to create topics for other applications, this is only useful when you attach a custom `kafka-topics-values.yaml` file with other topics |
 | `KAFKA_TOPICS_VALUES_FILE` | Path to a custom `kafka-topics-values.yaml` file|
-| `KAFKA_TOPIC_PARTITIONS` | Number of partitions |
+| `KAFKA_TOPIC_PARTITIONS` | Number of partitions for general topics |
+| `KAFKA_DLQ_TOPIC_PARTITIONS` | Partitions for dead-letter topics across all applications (default 4) |
+| `KAFKA_DLQ_TOPIC_RETENTION_MS` | Dead-letter retention across all applications in milliseconds (default 604800000) |
 | `KAFKA_TOPIC_REPLICAS` | Number of replicas |
 | `KAFKA_TOPIC_MIN_INSYNC_REPLICAS` | Minumum number of in-sync replicas (for use with ack=all) |
 | `KAFKA_TOPIC_RETENTION_MS` | Retention time for stream topics, milliseconds |
