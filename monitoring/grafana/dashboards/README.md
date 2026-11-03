@@ -53,6 +53,9 @@ https://github.com/seglo/kafka-lag-exporter/blob/master/grafana/Kafka_Lag_Export
 
 [20867](https://grafana.com/grafana/dashboards/20867-mongodb-dashboard/)
 
+## Kafka Connect S3 Archive
+
+[kafka-connect-s3-archive.json](kafka-connect-s3-archive.json) shows the health, archive latency, consumer lag, throughput and errors of the S3 archive sink connector. It uses the Kafka Connect JMX exporter metrics (Prometheus job `kafka-connect`) and the Kafka Lag Exporter metrics. See [docs/S3_Archive.md](../../../docs/S3_Archive.md).
 ## ODE FFMLib Decode
 
 `ffmlib-decode.json` graphs in-process FFMLib decode rate, failures, drops, latency, raw UDP publication, routed output delivery, and offset-commit health from the ODE Prometheus endpoint.
