@@ -166,6 +166,19 @@ Set the `COMPOSE_PROFILES` environmental variable as follows:
   3. `kafka` service from [docker-compose-kafka](docker-compose-kafka.yml)
   4. `mongo` and `mongo-setup` services from [docker-compose-mongo](docker-compose-mongo.yml)
 
+### Image maintenance
+
+The Kafka Connect image uses Confluent Platform 8.4.0, with MongoDB Kafka Connector 1.13.0 and Confluent Connect Transforms 1.4.7. See the [Confluent support matrix](https://docs.confluent.io/platform/current/installation/versions-interoperability.html) before upgrading the base image. Base image references use version tags for readability and multi-platform SHA-256 digests to select immutable images; update both when upgrading.
+
+The base image still contains vulnerable OS packages and has no package manager:
+
+- `ca-certificates` ([CVE-2026-114406](https://access.redhat.com/security/vulnerabilities/RHSB-2026-012))
+- `libbrotli` (CVE-2026-111497, fixed in `1.0.9-10.el9_8.1`)
+
+The Dockerfile upgrades the packages listed in `UPDATE_PACKAGES` using a UBI 9 build stage, then copies the files of every package that changed, plus the updated RPM metadata, into the runtime image. When `ca-certificates` changes, the build also requires the regenerated trust bundles and replaces the runtime image's generated trust directory. The package manager remains in the build stage. Remove a package from `UPDATE_PACKAGES` once the Connect base image includes its fix, and remove the stage when the list is empty.
+
+The `confluent-hub` client is [deprecated](https://docs.confluent.io/platform/current/connect/confluent-hub/index.html). Future base-image upgrades may require migrating plugin installation to `confluent connect plugin install`.
+
 ### Configure Kafka Connector Creation
 
 The Kafka connectors created by the `kafka-connect-setup` service are configured in the [kafka-connectors-values.yaml](jikkou/kafka-connectors-values.yaml) file.  The connectors in that file are organized by the application, and given parameters to define the Kafka -> MongoDB sync connector:

@@ -17,7 +17,7 @@ services:
     ports:
       - "8083:8083"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/connectors"]
+      test: ["CMD", "ub", "http-ready", "http://localhost:8083/connectors", "5"]
       interval: 30s
       timeout: 10s
       retries: 4
