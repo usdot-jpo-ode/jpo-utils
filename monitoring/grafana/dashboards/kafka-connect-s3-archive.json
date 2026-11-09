@@ -172,7 +172,7 @@
       "id": 4,
       "type": "stat",
       "title": "Archive latency",
-      "description": "Age of the oldest record not yet committed to S3 (kafka-lag-exporter time lag). Offsets are only committed after objects are written to S3, so this is the archive latency. Target: under 5 minutes.",
+      "description": "Age of the oldest record not yet committed to S3 (kafka-lag-exporter time lag). Offsets are only committed after objects are written to S3, so this is the archive latency. Target: under 5 minutes. Skipped records (filtered records without asn1, tombstones) do not move the committed offset, so a topic whose newest records are all skipped, such as topic.OdeTimJson in the compact archive, can show a growing latency with no data at risk. See Archive latency by topic and docs/S3_Archive.md section 8.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"

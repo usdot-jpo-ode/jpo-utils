@@ -51,7 +51,8 @@ services:
       CONNECT_LOG4J_ROOT_LOGLEVEL: ${CONNECT_LOG_LEVEL:-ERROR}
       CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=${CONNECT_LOG_LEVEL:-ERROR},org.reflections=${CONNECT_LOG_LEVEL:-ERROR},com.mongodb.kafka=${CONNECT_LOG_LEVEL:-ERROR},io.confluent.connect.s3=${CONNECT_LOG_LEVEL:-ERROR}"
       CONNECT_PLUGIN_PATH: /usr/share/confluent-hub-components
-      KAFKA_OPTS: "-javaagent:/usr/share/jmx-exporter/jmx_prometheus_javaagent.jar=9404:/usr/share/jmx-exporter/jmx-exporter.yml"
+      # The image starts the Prometheus JMX exporter agent on port 9404 through EXTRA_ARGS, see kafka-connect/Dockerfile.
+      # To disable it, set EXTRA_ARGS: "-name connectDistributed".
       # The S3 sink connector uses the AWS default credential provider chain. In AWS, use an IAM role
       # (EC2 instance profile, ECS task role or EKS IRSA) and leave the access keys blank.
       # The access keys are only intended for the local S3 emulator (s3_local profile).

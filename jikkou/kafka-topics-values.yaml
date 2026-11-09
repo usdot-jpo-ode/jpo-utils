@@ -49,8 +49,9 @@ dlqRetentionMs: 604800000
 #
 # Custom topics support these optional settings:
 #   - partitions, cleanUpPolicy
-#   - retentionMs: used when env var KAFKA_CUSTOM_TOPIC_RETENTION_MS is not set
-#   - fixedRetentionMs: always used, ignoring KAFKA_CUSTOM_TOPIC_RETENTION_MS
+#   - retentionMs: used when env var KAFKA_CUSTOM_TOPIC_RETENTION_MS is not set. docker-compose-kafka.yml
+#     always sets it (default 300000), even when it is blank in the .env file, so with the compose files
+#     KAFKA_CUSTOM_TOPIC_RETENTION_MS applies to every custom topic and retentionMs is not used.
 #
 #--------------------------------------------------------------------------------------
 apps:
@@ -226,7 +227,10 @@ apps:
         retentionMs: 43200000
   kafkaconnect:
     name: jpo-kafka-connect
-    dlqTopics: []
+    dlqTopics:
+      # Dead letter queues of the S3 archive connectors (docs/S3_Archive.md)
+      - dlq.S3Archive
+      - dlq.S3RawArchive
     streamTopics: {}
     tableTopics: {}
     customTopics:
@@ -239,16 +243,6 @@ apps:
       - topicName: topic.KafkaConnectStatus
         partitions: 3
         cleanUpPolicy: compact
-      # Dead letter queue for the S3 archive connector (docs/S3_Archive.md)
-      - topicName: dlq.S3Archive
-        partitions: 1
-        cleanUpPolicy: delete
-        fixedRetentionMs: 604800000  # 7 days
-      # Dead letter queue for the compact raw S3 archive connector (docs/S3_Archive.md)
-      - topicName: dlq.S3RawArchive
-        partitions: 1
-        cleanUpPolicy: delete
-        fixedRetentionMs: 604800000  # 7 days
   mecdeposit:
     name: jpo-mecdeposit
     dlqTopics: []

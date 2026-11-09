@@ -118,7 +118,7 @@ The topics of the `conflictmonitor` app are added to the archive list when `CONN
 |---|---|
 | `CONNECT_S3_ARCHIVE_INTERSECTION_API=true` | `topic.IntersectionApiRsuStatus` |
 | `CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR=true` | `topic.RmNearestNeighborUnresponsiveEvent`, `topic.RmNearestNeighborUnresponsiveNotification`, and the compacted `topic.RmIntersectionStatusRecords` and `topic.RmMonitoringStatusRecords` |
-| `CONNECT_S3_ARCHIVE_OTHER=true` | The topics added to the `other` app |
+| `CONNECT_S3_ARCHIVE_OTHER=true` | The topics added to the `other` app, which has none by default. Add them to `kafka-topics-values.yaml` and rebuild the `jpo-jikkou` image. |
 
 ### Not archived
 
@@ -133,7 +133,7 @@ The topics of the `conflictmonitor` app are added to the archive list when `CONN
 
 ## 4. Configuration
 
-The connector is created only when `CONNECT_CREATE_S3_ARCHIVE=true`. All settings can be changed without rebuilding any image by updating the `.env` file or the mounted values file, then re-running the `kafka-connect-setup` service. See [Operations](#9-operations).
+The connector is created only when `CONNECT_CREATE_S3_ARCHIVE=true`. The environment variables can be changed without rebuilding any image by updating the `.env` file, then re-running the `kafka-connect-setup` service. The [values file settings](#values-file-settings) are read from the `jpo-jikkou` image. See [Operations](#9-operations).
 
 ### Environment variables
 
@@ -151,7 +151,7 @@ The connector is created only when `CONNECT_CREATE_S3_ARCHIVE=true`. All setting
 | `CONNECT_S3_ARCHIVE_CONFLICTMONITOR` | `false` | Archive the Conflict Monitor event, assessment, notification and metrics topics. |
 | `CONNECT_S3_ARCHIVE_INTERSECTION_API` | `false` | Archive the Intersection API topics. |
 | `CONNECT_S3_ARCHIVE_RSUSTATUSMONITOR` | `false` | Archive the RSU status monitor topics. |
-| `CONNECT_S3_ARCHIVE_OTHER` | `false` | Archive the topics of the `other` app. |
+| `CONNECT_S3_ARCHIVE_OTHER` | `false` | Archive the topics of the `other` app. The app has no topics in the default `kafka-topics-values.yaml`; add them there and rebuild the `jpo-jikkou` image. |
 | `CONNECT_S3_TASKS_MAX` | `1` | Number of connector tasks. Topic partitions are spread across tasks. |
 | `CONNECT_S3_FLUSH_SIZE` | `10000` | Maximum records per object. |
 | `CONNECT_S3_ROTATE_INTERVAL_MS` | `120000` | Maximum time before an open object is committed. Keep well below 5 minutes to meet the archive latency target. |
@@ -161,7 +161,14 @@ The connector is created only when `CONNECT_CREATE_S3_ARCHIVE=true`. All setting
 
 ### Values file settings
 
-The `s3Archive` section of [kafka-connectors-values.yaml](../jikkou/kafka-connectors-values.yaml) holds the defaults and the topic list. To customize it, copy the file, edit it, and point `CONNECT_KAFKA_CONNECTORS_VALUES_FILE` at the copy.
+The `s3Archive` section of [kafka-connectors-values.yaml](../jikkou/kafka-connectors-values.yaml) holds the defaults, the archived apps and the excluded topics. The archived topics come from [kafka-topics-values.yaml](../jikkou/kafka-topics-values.yaml). The `kafka-connect-setup` service reads both files from the `jpo-jikkou` image, so to change them, edit them in the `jikkou` folder and rebuild the image:
+
+```bash
+docker compose build kafka-connect-setup
+docker compose up kafka-connect-setup
+```
+
+`CONNECT_KAFKA_CONNECTORS_VALUES_FILE` does not change the file that is used. The compose file mounts it at `/kafka-connectors-values.yaml`, but the setup script reads `kafka-connectors-values.yaml` from its working directory `/app`.
 
 | Setting | Default | Description |
 |---|---|---|
@@ -174,8 +181,9 @@ The `s3Archive` section of [kafka-connectors-values.yaml](../jikkou/kafka-connec
 | `partRetries`, `retryBackoffMs` | `5`, `1000` | Retries of a single S3 request with exponential backoff. |
 | `taskRetryBackoffMs` | `5000` | Wait before the task retries a failed S3 write. |
 | `maxPollIntervalMs` | `900000` | Consumer `max.poll.interval.ms`, so slow S3 retries do not cause consumer group rebalances. |
-| `dlqTopicName` | `dlq.S3Archive` | Dead letter queue topic. It is created by `kafka-setup` with a fixed 7 day retention. |
-| `topics` | see [Topic Inventory](#3-topic-inventory) | Archived topics. |
+| `dlqTopicName` | `dlq.S3Archive` | Dead letter queue topic. It is created by `kafka-setup` as a dead letter topic of the `kafkaconnect` app, with `KAFKA_DLQ_TOPIC_RETENTION_MS` retention (default 7 days) and `KAFKA_DLQ_TOPIC_PARTITIONS` partitions (default 4). |
+| `apps` | see [Topic Inventory](#3-topic-inventory) | Apps of `kafka-topics-values.yaml` whose topics are archived, each with its `CONNECT_S3_ARCHIVE_<APP>` variable and default. |
+| `excludeTopics` | see [Not archived](#not-archived) | Topics of those apps that are not archived. |
 
 [Back to top](#s3-archive-kafka-connector)
 
@@ -196,7 +204,11 @@ The `s3Archive` section of [kafka-connectors-values.yaml](../jikkou/kafka-connec
    ```
 
 3. **Attach the IAM policy** from [section 6](#6-s3-security-encryption-and-lifecycle) to the role.
-4. **Increase Kafka retention for archived topics.** Retention must cover the longest S3 or Kafka Connect outage you need to survive without data loss. The default `KAFKA_TOPIC_RETENTION_MS=300000` is **5 minutes**, which only allows a 5 minute outage. A retention of at least 24 hours (`86400000`) is recommended for production, sized against the available broker disk. See [Delivery Guarantees](#7-delivery-guarantees-and-failure-handling).
+4. **Increase Kafka retention for archived topics.** Retention must cover the longest S3 or Kafka Connect outage you need to survive without data loss. The `kafka-setup` service sets the retention of the archived topics from two variables:
+   - `KAFKA_TOPIC_RETENTION_MS` for the stream topics, such as the ODE, PPM, GeoJSON Converter and jpo-mec-deposit topics.
+   - `KAFKA_CUSTOM_TOPIC_RETENTION_MS` for the custom topics, such as the Deduplicator topics and `topic.IntersectionApiRsuStatus`. When it is set, it replaces the 12 hour `retentionMs` of these topics in [kafka-topics-values.yaml](../jikkou/kafka-topics-values.yaml), and `docker-compose-kafka.yml` sets it by default.
+
+   Both default to `300000`, **5 minutes**, which only allows a 5 minute outage. Set both to at least 24 hours (`86400000`) for production, sized against the available broker disk, and re-run `kafka-setup`. See [Delivery Guarantees](#7-delivery-guarantees-and-failure-handling).
 5. **Configure the `.env` file** of the deployment, for example:
 
    ```bash
@@ -319,7 +331,7 @@ The connector provides **at-least-once** delivery as long as Kafka still holds t
 | Kafka Connect worker or connector restart | Uncommitted records are re-read from the last committed offset. Rewritten objects use the same names; the connector detects existing objects and does not overwrite them. | No | None |
 | S3 timeouts, throttling, 5xx errors, network loss | The S3 request is retried `partRetries` times, then the task rewinds to the start of the uncommitted object and retries every `taskRetryBackoffMs`, for as long as the error persists. The task stays `RUNNING`. Consumption pauses while writes fail, so worker memory stays bounded. | No, while the outage is shorter than Kafka retention | None. Alert on archive latency. |
 | Non-retriable errors: DNS resolution failure, missing bucket, access denied, missing credentials | The task moves to `FAILED`. Offsets of unwritten records are not committed. | No, while the task is restarted within Kafka retention | Fix the cause, then [restart the task](#restart-a-failed-task). |
-| Record reported as errant by the connector or the Connect framework | Reported to the dead letter queue topic `dlq.S3Archive` with error context headers, and logged. | No, the record is kept in `dlq.S3Archive` for 7 days | Investigate the DLQ record. |
+| Record reported as errant by the connector or the Connect framework | Reported to the dead letter queue topic `dlq.S3Archive` with error context headers, and logged. | No, the record is kept in `dlq.S3Archive` for `KAFKA_DLQ_TOPIC_RETENTION_MS` (default 7 days) | Investigate the DLQ record. |
 | Kafka unavailable | The consumer retries until Kafka is back. | No | None |
 | Outage longer than Kafka topic retention | Records deleted by Kafka retention before they are archived are lost. | **Yes** | Size retention for the longest tolerated outage. |
 
@@ -346,15 +358,29 @@ The Grafana dashboard **Kafka Connect S3 Archive** ([kafka-connect-s3-archive.js
 
 The JMX exporter rules ([jmx-exporter.yml](../kafka-connect/jmx-exporter.yml)) export connector status and the per connector task counts for every connector. Task level metrics (task status, throughput, errors) are only exported for `sink.S3Archive` and `sink.S3RawArchive`. With the default `CONNECT_TASKS_MAX=10`, the Mongo sinks run more than 800 tasks. Reading every task MBean made a scrape take 15 to 20 seconds on a one CPU worker, which is longer than the 10 second Prometheus scrape timeout. With the task metrics limited to the archive connectors, a scrape takes about one second. If a connector is renamed (`s3Archive.connectorName` or `s3RawArchive.connectorName`), update the task level `includeObjectNames` entries in that file and rebuild the image. If Prometheus shows the `kafka-connect` target as down with `context deadline exceeded`, and the worker logs `The Prometheus metrics HTTPServer caught an Exception while trying to send the metrics response`, the scrape is taking longer than the timeout.
 
+The JMX exporter java agent is started by the Kafka Connect image through the `EXTRA_ARGS` variable, which only the worker's start script passes to java. Kafka CLI tools run in the container with `docker exec` do not load it. To disable the agent, set `EXTRA_ARGS: "-name connectDistributed"` on the `kafka-connect` service.
+
+### Skipped records and archive latency
+
+Connector `12.1.13` only commits the offset of a topic partition when it writes an object for that partition. Records that are skipped before they reach an object do not move the committed offset:
+
+- the records without `asn1` that `sink.S3RawArchive` filters out, such as TIMs deposited with `POST /tim`
+- null value records, such as the tombstones of the compacted Conflict Monitor and RSU status monitor table topics
+
+While the newest records of a partition are all skipped, its committed offset stays at the last archived record and its lag in seconds keeps growing, until a record of that partition is archived again. No data is at risk: the lag in records only counts the skipped records. This mostly affects `topic.OdeTimJson` in `sink.S3RawArchive` on deployments that receive deposited TIMs but few TIMs over UDP. Connector versions `12.1.14` and later commit these offsets, but they must not be used, see [Upgrading the Connector](#14-upgrading-the-connector).
+
+The latency alerts below leave `topic.OdeTimJson` out for `sink.S3RawArchive`. The task failed and DLQ alerts still cover it. If the Conflict Monitor or RSU status monitor table topics are archived, leave them out of the `sink.S3Archive` latency alert in the same way, with a `topic!~"<table topic>|<table topic>|..."` matcher that lists the `tableTopics` of those apps in [kafka-topics-values.yaml](../jikkou/kafka-topics-values.yaml).
+
 ### Recommended alerts
 
-The alerts cover both archive connectors. If only `sink.S3Archive` is deployed, replace `sink.S3(Raw)?Archive` with `sink.S3Archive`, otherwise the missing connector alert fires for `sink.S3RawArchive`.
+The alerts cover both archive connectors. If only `sink.S3Archive` is deployed, replace `sink.S3(Raw)?Archive` with `sink.S3Archive` and leave out the compact archive latency alert, otherwise the missing connector alert fires for `sink.S3RawArchive`.
 
 | Alert | PromQL | For |
 |---|---|---|
 | S3 archive task failed | `sum by (connector) (kafka_connect_worker_connector_connector_failed_task_count{connector=~"sink.S3(Raw)?Archive"}) > 0` | 1m |
 | S3 archive connector missing or not running | `absent(kafka_connect_connector_status{connector="sink.S3Archive",status="running"})`, and the same for `sink.S3RawArchive` | 5m |
-| Archive latency above target | `max by (group) (kafka_consumergroup_group_max_lag_seconds{group=~"connect-sink.S3(Raw)?Archive"}) > 300` | 5m |
+| Archive latency above target | `max by (group) (kafka_consumergroup_group_lag_seconds{group="connect-sink.S3Archive"}) > 300` | 5m |
+| Compact archive latency above target | `max by (group) (kafka_consumergroup_group_lag_seconds{group="connect-sink.S3RawArchive",topic!="topic.OdeTimJson"}) > 300` | 5m |
 | Records sent to the S3 archive DLQ | `sum by (connector) (increase(kafka_connect_task_error_metrics_deadletterqueue_produce_requests{connector=~"sink.S3(Raw)?Archive"}[15m])) > 0` | 0m |
 
 ### Logs
@@ -386,11 +412,11 @@ All commands use the Kafka Connect REST API on port `8083`. Changes made directl
 
 ### Add or remove archived topics
 
-Either option takes effect without rebuilding any image:
+The first two options take effect without rebuilding any image:
 
 - Set the `CONNECT_S3_ARCHIVE_<APP>` variables in the `.env` file to choose the apps whose topics are archived.
 - Or set `CONNECT_S3_TOPICS` to the full comma separated topic list.
-- Topics added to an app in `kafka-topics-values.yaml` are archived with that app. To leave one out, add it to `s3Archive.excludeTopics` in `kafka-connectors-values.yaml`. Both files are read from the `jpo-jikkou` image.
+- Topics added to an app in `kafka-topics-values.yaml` are archived with that app. To leave one out, add it to `s3Archive.excludeTopics` in `kafka-connectors-values.yaml`. Both files are read from the `jpo-jikkou` image, so rebuild it with `docker compose build kafka-connect-setup` after editing them, see [Values file settings](#values-file-settings).
 
 Then run `docker compose up kafka-connect-setup`. Only `sink.S3Archive` is updated; the MongoDB connectors are left unchanged. A newly added topic is archived from its earliest retained offset.
 
@@ -546,7 +572,7 @@ The connector reads the decoded ODE topics, not the raw encoded topics. The ODE 
 
 **What is not archived:**
 - **Messages that fail to decode:** only decoded messages reach these topics. While the raw encoded topics exist, `sink.S3Archive` still keeps every received message.
-- **TIMs deposited through the ODE REST API (`POST /tim`):** the ODE publishes them to `topic.OdeTimJson` before encoding, so they have no `asn1`. A filter drops every record without a non empty `asn1`.
+- **TIMs deposited through the ODE REST API (`POST /tim`):** the ODE publishes them to `topic.OdeTimJson` before encoding, so they have no `asn1`. A filter drops every record without a non empty `asn1`. Dropped records do not move the committed offset, so `topic.OdeTimJson` can show a growing archive latency while only deposited TIMs arrive, see [Skipped records and archive latency](#skipped-records-and-archive-latency).
 
 ### Layout and format
 
@@ -573,7 +599,7 @@ The connector reads the records with the `JsonConverter` and applies three trans
 2. `io.confluent.connect.transforms.Filter$Value` (`filter.condition=$[?(@.asn1 =~ /.+/)]`, `filter.type=include`, `missing.or.null.behavior=exclude`) drops records whose `asn1` is missing, null or empty. It comes from the `confluentinc/connect-transforms` plugin, which is already installed in the Kafka Connect image.
 3. `ReplaceField$Value` (`include=odeReceivedAt,originIp,asn1`) keeps only those fields.
 
-`JsonFormat` then writes each result as one line. The bucket, region, environment, partitioning, flush, retry and error handling settings are shared with `sink.S3Archive` through the `s3_sink_common` macro in [kafka-connectors-template.jinja](../jikkou/kafka-connectors-template.jinja). The connector has its own consumer group `connect-sink.S3RawArchive` and its own dead letter queue `dlq.S3RawArchive`, with 7 day retention.
+`JsonFormat` then writes each result as one line. The bucket, region, environment, partitioning, flush, retry and error handling settings are shared with `sink.S3Archive` through the `s3_sink_common` macro in [kafka-connectors-template.jinja](../jikkou/kafka-connectors-template.jinja). The connector has its own consumer group `connect-sink.S3RawArchive` and its own dead letter queue `dlq.S3RawArchive`, created like `dlq.S3Archive`.
 
 **CPU:** the connector parses each decoded record, which is about 1.9 KB for a BSM and 12.5 KB for a MAP, and keeps about 0.4 KB and 2 KB of it. This uses more CPU than the full archive's byte-for-byte copy. Include both connectors when sizing the Kafka Connect worker.
 

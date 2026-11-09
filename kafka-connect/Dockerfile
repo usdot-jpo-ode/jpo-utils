@@ -15,7 +15,7 @@ RUN confluent-hub install --no-prompt confluentinc/connect-transforms:1.4.7
 # docs/S3_Archive.md before upgrading.
 RUN confluent-hub install --no-prompt confluentinc/kafka-connect-s3:12.1.13
 
-# Prometheus JMX exporter java agent (Apache 2.0), enabled through KAFKA_OPTS in docker-compose-connect.yml
+# Prometheus JMX exporter java agent (Apache 2.0), serves the worker metrics on port 9404
 # Docs: https://prometheus.github.io/jmx_exporter/
 USER root
 RUN mkdir -p /usr/share/jmx-exporter \
@@ -25,3 +25,10 @@ RUN mkdir -p /usr/share/jmx-exporter \
 COPY jmx-exporter.yml /usr/share/jmx-exporter/jmx-exporter.yml
 RUN chmod 755 /usr/share/jmx-exporter && chmod 644 /usr/share/jmx-exporter/*
 USER appuser
+
+# The agent is loaded through EXTRA_ARGS, which only the connect-distributed start script passes to java,
+# and not through KAFKA_OPTS, which every Kafka CLI tool in the container also reads. A CLI tool run with
+# docker exec would otherwise start a second agent on port 9404 and exit. Keeping the setting in the image
+# also means an older image without the agent jar still starts. Set EXTRA_ARGS to "-name connectDistributed"
+# on the container to disable the agent.
+ENV EXTRA_ARGS="-name connectDistributed -javaagent:/usr/share/jmx-exporter/jmx_prometheus_javaagent.jar=9404:/usr/share/jmx-exporter/jmx-exporter.yml"
