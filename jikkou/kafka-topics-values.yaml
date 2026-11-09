@@ -47,6 +47,12 @@ dlqRetentionMs: 604800000
 #   - Dead-letter topics hold failed records with cleanup.policy = delete and separate retention
 #   - Table Topics are intended to back KTables and have cleanup.policy = compact
 #
+# Custom topics support these optional settings:
+#   - partitions, cleanUpPolicy
+#   - retentionMs: used when env var KAFKA_CUSTOM_TOPIC_RETENTION_MS is not set. docker-compose-kafka.yml
+#     always sets it (default 300000), even when it is blank in the .env file, so with the compose files
+#     KAFKA_CUSTOM_TOPIC_RETENTION_MS applies to every custom topic and retentionMs is not used.
+#
 #--------------------------------------------------------------------------------------
 apps:
   ode:
@@ -221,7 +227,10 @@ apps:
         retentionMs: 43200000
   kafkaconnect:
     name: jpo-kafka-connect
-    dlqTopics: []
+    dlqTopics:
+      # Dead letter queues of the S3 archive connectors (docs/S3_Archive.md)
+      - dlq.S3Archive
+      - dlq.S3RawArchive
     streamTopics: {}
     tableTopics: {}
     customTopics:

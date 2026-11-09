@@ -56,3 +56,30 @@ RUN confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:1.13.0
 # Transforms
 # Docs: https://docs.confluent.io/platform/current/connect/transforms/overview.html
 RUN confluent-hub install --no-prompt confluentinc/connect-transforms:1.4.7
+
+# Amazon S3 Sink Connector (Confluent Community License)
+# Docs: https://docs.confluent.io/kafka-connectors/s3-sink/current/overview.html
+# NOTE: Versions 12.1.14+, 12.0.12+ and 11.0.22+ include a preCommit offset fallback (CC-43920) that can commit
+# offsets for records that failed to upload after a retriable S3 error. Re-run the S3 outage test in
+# docs/S3_Archive.md before upgrading.
+RUN confluent-hub install --no-prompt confluentinc/kafka-connect-s3:12.1.13
+
+# Prometheus JMX exporter java agent (Apache 2.0), serves the worker metrics on port 9404
+# Docs: https://prometheus.github.io/jmx_exporter/
+# The runtime image has no curl, so BuildKit downloads the jar and verifies its SHA-256 checksum.
+# The directory is created first because ADD and COPY would apply --chmod=644 to a directory they create,
+# leaving it unreadable for appuser.
+USER root
+RUN mkdir -m 755 /usr/share/jmx-exporter
+USER appuser
+ADD --checksum=sha256:0ad843261c567d1924a017d542e14c40f2afff523d940c25ee000742fde4b3a9 --chmod=644 \
+    https://github.com/prometheus/jmx_exporter/releases/download/1.7.0/jmx_prometheus_javaagent-1.7.0.jar \
+    /usr/share/jmx-exporter/jmx_prometheus_javaagent.jar
+COPY --chmod=644 jmx-exporter.yml /usr/share/jmx-exporter/jmx-exporter.yml
+
+# The agent is loaded through EXTRA_ARGS, which only the connect-distributed start script passes to java,
+# and not through KAFKA_OPTS, which every Kafka CLI tool in the container also reads. A CLI tool run with
+# docker exec would otherwise start a second agent on port 9404 and exit. Keeping the setting in the image
+# also means an older image without the agent jar still starts. Set EXTRA_ARGS to "-name connectDistributed"
+# on the container to disable the agent.
+ENV EXTRA_ARGS="-name connectDistributed -javaagent:/usr/share/jmx-exporter/jmx_prometheus_javaagent.jar=9404:/usr/share/jmx-exporter/jmx-exporter.yml"
