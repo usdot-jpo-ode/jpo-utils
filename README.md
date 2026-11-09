@@ -169,7 +169,7 @@ Set the `COMPOSE_PROFILES` environmental variable as follows:
 
 ### Image maintenance
 
-The Kafka Connect image uses Confluent Platform 8.4.0, with MongoDB Kafka Connector 1.13.0 and Confluent Connect Transforms 1.4.7. See the [Confluent support matrix](https://docs.confluent.io/platform/current/installation/versions-interoperability.html) before upgrading the base image. Base image references use version tags for readability and multi-platform SHA-256 digests to select immutable images; update both when upgrading.
+The Kafka Connect image uses Confluent Platform 8.4.0, with MongoDB Kafka Connector 1.13.0, Confluent Connect Transforms 1.4.7, the Confluent Amazon S3 Sink Connector 12.1.13 (pinned, see [Upgrading the Connector](docs/S3_Archive.md#14-upgrading-the-connector)) and the Prometheus JMX exporter agent 1.7.0. See the [Confluent support matrix](https://docs.confluent.io/platform/current/installation/versions-interoperability.html) before upgrading the base image. Base image references use version tags for readability and multi-platform SHA-256 digests to select immutable images; update both when upgrading.
 
 The base image still contains vulnerable OS packages and has no package manager:
 

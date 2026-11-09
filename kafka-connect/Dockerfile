@@ -66,14 +66,16 @@ RUN confluent-hub install --no-prompt confluentinc/kafka-connect-s3:12.1.13
 
 # Prometheus JMX exporter java agent (Apache 2.0), serves the worker metrics on port 9404
 # Docs: https://prometheus.github.io/jmx_exporter/
+# The runtime image has no curl, so BuildKit downloads the jar and verifies its SHA-256 checksum.
+# The directory is created first because ADD and COPY would apply --chmod=644 to a directory they create,
+# leaving it unreadable for appuser.
 USER root
-RUN mkdir -p /usr/share/jmx-exporter \
-    && curl -fsSL -o /usr/share/jmx-exporter/jmx_prometheus_javaagent.jar \
-       https://github.com/prometheus/jmx_exporter/releases/download/1.7.0/jmx_prometheus_javaagent-1.7.0.jar \
-    && echo "0ad843261c567d1924a017d542e14c40f2afff523d940c25ee000742fde4b3a9  /usr/share/jmx-exporter/jmx_prometheus_javaagent.jar" | sha256sum -c -
-COPY jmx-exporter.yml /usr/share/jmx-exporter/jmx-exporter.yml
-RUN chmod 755 /usr/share/jmx-exporter && chmod 644 /usr/share/jmx-exporter/*
+RUN mkdir -m 755 /usr/share/jmx-exporter
 USER appuser
+ADD --checksum=sha256:0ad843261c567d1924a017d542e14c40f2afff523d940c25ee000742fde4b3a9 --chmod=644 \
+    https://github.com/prometheus/jmx_exporter/releases/download/1.7.0/jmx_prometheus_javaagent-1.7.0.jar \
+    /usr/share/jmx-exporter/jmx_prometheus_javaagent.jar
+COPY --chmod=644 jmx-exporter.yml /usr/share/jmx-exporter/jmx-exporter.yml
 
 # The agent is loaded through EXTRA_ARGS, which only the connect-distributed start script passes to java,
 # and not through KAFKA_OPTS, which every Kafka CLI tool in the container also reads. A CLI tool run with
