@@ -1,5 +1,54 @@
-FROM confluentinc/cp-kafka-connect:7.7.0
+FROM confluentinc/cp-kafka-connect:8.4.0@sha256:a17ca6c1021f0e46775839c66da169d8e97c206c0b1c17d9c314206f45800fc4 AS connect-base
 
+# Update OS packages outside the runtime image, which has no package manager.
+# Keep the RPM inventory consistent with the updated files.
+#   ca-certificates: CVE-2026-114406
+#   libbrotli:       CVE-2026-111497
+FROM registry.access.redhat.com/ubi9/ubi:9.8@sha256:5f08e80aa970ae77712e75e5e857ac0b396abc900823c4d041c1150a9538a13f AS package-updates
+ARG UPDATE_PACKAGES="ca-certificates libbrotli"
+# DNF needs the runtime filesystem for dependency checks and package scriptlets.
+COPY --from=connect-base / /rootfs/
+RUN set -eu; rpm --root /rootfs -qa | sort > /packages.before \
+    && dnf -y --installroot=/rootfs --releasever=9 \
+        --setopt=install_weak_deps=False \
+        --disablerepo='*' --enablerepo=ubi-9-baseos-rpms \
+        upgrade $UPDATE_PACKAGES \
+    # Copy every package DNF changed, including any upgraded dependencies.
+    && rpm --root /rootfs -qa | sort | comm -13 /packages.before - > /packages.changed \
+    && test -s /packages.changed \
+    && xargs rpm --root /rootfs --dbpath /var/lib/rpm -ql < /packages.changed > /updated-packages.files \
+    && mkdir /updated \
+    && cd /rootfs \
+    # Shared package directories must not be copied recursively.
+    && while read -r file; do \
+        if [ -d ".$file" ] && [ ! -L ".$file" ]; then \
+            mkdir -p "/updated$file"; \
+            chmod --reference=".$file" "/updated$file"; \
+            chown --reference=".$file" "/updated$file"; \
+        elif [ -e ".$file" ] || [ -L ".$file" ]; then \
+            cp -a --parents ".$file" /updated/; \
+        fi; \
+    done < /updated-packages.files \
+    && test ! -s var/lib/rpm/rpmdb.sqlite-wal \
+    && cp -a --parents var/lib/rpm/rpmdb.sqlite /updated/ \
+    # Generated trust bundles are required whenever ca-certificates changes.
+    && if grep -q '^ca-certificates-' /packages.changed; then \
+        test -s /updated/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem \
+        && test -s /updated/etc/pki/ca-trust/extracted/java/cacerts; \
+    fi
+
+FROM connect-base
+USER root
+COPY --from=package-updates /packages.changed /tmp/packages.changed
+# COPY merges directories; when ca-certificates changes, discard generated trust files removed by the update.
+RUN if grep -q '^ca-certificates-' /tmp/packages.changed; then \
+        rm -rf /etc/pki/ca-trust/extracted; \
+    fi \
+    && rm -f /tmp/packages.changed /var/lib/rpm/.rpm.lock /var/lib/rpm/rpmdb.sqlite-shm /var/lib/rpm/rpmdb.sqlite-wal
+COPY --from=package-updates /updated/ /
+USER appuser
+
+# confluent-hub is deprecated; see README image maintenance notes before upgrading.
 # MongoDB Kafka Connector
 # Docs: https://www.mongodb.com/docs/kafka-connector/current/
 RUN confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:1.13.0
